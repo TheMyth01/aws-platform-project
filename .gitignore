@@ -1,0 +1,14 @@
+﻿**/.terraform/*
+*.tfstate
+*.tfstate.*
+*.tfplan
+*.tfvars
+!terraform.tfvars.example
+.env
+.env.*
+*.pem
+.DS_Store
+.vscode/
+.idea/
+node_modules/
+__pycache__/
