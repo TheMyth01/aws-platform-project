@@ -37,3 +37,19 @@ output "private_subnet_ids" {
 output "db_subnet_ids" {
   value = module.vpc.db_subnet_ids
 }
+
+
+# ------------------------------------------------------------------
+# ECR repository for application images
+# ------------------------------------------------------------------
+module "ecr_app" {
+  source = "../../modules/ecr"
+
+  project_name    = var.project_name
+  environment     = var.environment
+  repository_name = "app"
+}
+
+output "ecr_repository_url" {
+  value = module.ecr_app.repository_url
+}
