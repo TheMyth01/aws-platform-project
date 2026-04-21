@@ -17,3 +17,21 @@
 - I want to test the single_nat_gateway option later in a separate environment so I can compare cost and resilience properly.
 
 **Confidence level on topic:** Medium to high
+
+
+## 2026-04-22 — Week 3: ECR, Docker, First Image Pushed
+
+**What I built:** Reusable ECR module with lifecycle policy, Flask sample app containerised with a production-minded Dockerfile, image built and tested locally, pushed to ECR.
+
+**What went well:**
+- Building the Docker image and testing it locally went smoothly once the app files and Dockerfile were in place.
+- Seeing the image successfully pushed to my own ECR repository made the full container workflow click properly.
+
+**What surprised me / what I learned:**
+- PowerShell piping caused an issue with the ECR login command, so I learned that splitting it into two commands was more reliable on Windows.
+- I learned that using the `-target` flag can be useful in a controlled situation like creating only the ECR module, but it is not something to rely on for normal day-to-day Terraform workflows.
+
+**What I'd do differently next time:**
+- I would build the image in a way that avoids the manifest/scan issue so scan-on-push works exactly as expected in ECR.
+
+**Confidence level on topic:** Medium
