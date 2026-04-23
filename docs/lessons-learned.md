@@ -35,3 +35,26 @@
 - I would build the image in a way that avoids the manifest/scan issue so scan-on-push works exactly as expected in ECR.
 
 **Confidence level on topic:** Medium
+
+
+## 2026-04-23 — Week 4 (Attempt 1): EKS CREATE_FAILED — Free Tier blocked t3.medium
+
+**What I built:** EKS module (cluster, 2 IAM roles, OIDC provider, managed node group) plus added kubernetes.io/role tags to VPC subnets for ALB. Terraform applied VPC and EKS control plane successfully. Node group got stuck in CREATE_FAILED for 30+ minutes.
+
+**Root cause I diagnosed:**
+- EKS `describe-nodegroup` showed status CREATING with no health issues — misleading, looked fine.
+- Checked the Auto Scaling Group directly with `aws autoscaling describe-scaling-activities` and saw 5 failed launch attempts.
+- Reason: "The specified instance type is not eligible for Free Tier." My AWS account has Free Tier enforcement enabled which blocks non-Free-Tier instance types like t3.medium.
+
+**What I learned:**
+- EKS health APIs can return empty even when the ASG underneath is failing. The ASG scaling activities log is the more reliable diagnostic.
+- Free Tier enforcement is an account-level guardrail — not obvious from the error until you dig into ASG activities.
+- Partial-apply cleanup is painful. When destroy fails, you end up with orphan resources and confused Terraform state. Had to delete a CREATE_FAILED node group directly via CLI, then target-destroy each module separately.
+
+**Fix for next session:** change node_instance_types from ["t3.medium"] to ["t3.micro"] in dev main.tf. t3.micro is Free Tier eligible.
+
+**What I would do differently:**
+- Check account-level Free Tier / Service Control Policy restrictions before designing node sizing.
+- For a personal AWS account with Free Tier enforcement, default to Free Tier instance types unless I explicitly disable the guardrail.
+
+**Confidence level on topic:** Low (cluster never reached working state — deferred to next session).
