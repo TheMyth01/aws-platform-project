@@ -1,4 +1,4 @@
-﻿# ECR Repository
+# ECR Repository
 resource "aws_ecr_repository" "this" {
   name                 = "${var.project_name}-${var.environment}-${var.repository_name}"
   image_tag_mutability = var.image_tag_mutability

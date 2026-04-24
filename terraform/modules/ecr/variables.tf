@@ -1,4 +1,4 @@
-﻿variable "project_name" {
+variable "project_name" {
   description = "Project name, used in repository naming"
   type        = string
 }

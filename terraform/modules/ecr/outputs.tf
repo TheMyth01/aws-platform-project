@@ -1,4 +1,4 @@
-﻿output "repository_url" {
+output "repository_url" {
   description = "URL of the ECR repository (used for docker push)"
   value       = aws_ecr_repository.this.repository_url
 }

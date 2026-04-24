@@ -1,5 +1,5 @@
 # ------------------------------------------------------------------
-# Dev environment — calls the VPC module
+# Dev environment â€” calls the VPC module
 # ------------------------------------------------------------------
 module "vpc" {
   source = "../../modules/vpc"
@@ -20,7 +20,7 @@ module "vpc" {
 }
 
 # ------------------------------------------------------------------
-# Outputs — bubble up from the module for easy reference
+# Outputs â€” bubble up from the module for easy reference
 # ------------------------------------------------------------------
 output "vpc_id" {
   value = module.vpc.vpc_id
@@ -68,7 +68,7 @@ module "eks" {
   vpc_id             = module.vpc.vpc_id
   private_subnet_ids = module.vpc.private_subnet_ids
 
-  node_instance_types = ["t3.medium"]
+  node_instance_types = ["t3.micro"]
   node_desired_size   = 2
   node_min_size       = 1
   node_max_size       = 3
@@ -84,3 +84,4 @@ output "eks_cluster_name" {
 output "eks_cluster_endpoint" {
   value = module.eks.cluster_endpoint
 }
+
