@@ -1,5 +1,5 @@
 # ------------------------------------------------------------------
-# Dev environment â€” calls the VPC module
+# Dev environment Ã¢â‚¬â€ calls the VPC module
 # ------------------------------------------------------------------
 module "vpc" {
   source = "../../modules/vpc"
@@ -20,7 +20,7 @@ module "vpc" {
 }
 
 # ------------------------------------------------------------------
-# Outputs â€” bubble up from the module for easy reference
+# Outputs Ã¢â‚¬â€ bubble up from the module for easy reference
 # ------------------------------------------------------------------
 output "vpc_id" {
   value = module.vpc.vpc_id
@@ -63,7 +63,7 @@ module "eks" {
 
   project_name       = var.project_name
   environment        = var.environment
-  kubernetes_version = "1.32"
+  kubernetes_version = "1.33"
 
   vpc_id             = module.vpc.vpc_id
   private_subnet_ids = module.vpc.private_subnet_ids
@@ -84,4 +84,5 @@ output "eks_cluster_name" {
 output "eks_cluster_endpoint" {
   value = module.eks.cluster_endpoint
 }
+
 
