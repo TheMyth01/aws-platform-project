@@ -1,4 +1,4 @@
-﻿# AWS Platform Project
+# AWS Platform Project
 
 Production-style AWS platform project showing Terraform, AWS networking, Docker, ECR, Amazon EKS, Kubernetes, ALB Ingress, IAM Roles for Service Accounts and FinOps-style cost control.
 

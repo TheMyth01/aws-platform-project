@@ -1,4 +1,4 @@
-﻿# Week 5 – EKS Application Deployment Behind ALB
+# Week 5 – EKS Application Deployment Behind ALB
 
 ## Milestone
 

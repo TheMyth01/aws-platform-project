@@ -1,4 +1,4 @@
-﻿# Week 5 – Cost Control and Teardown Evidence
+# Week 5 – Cost Control and Teardown Evidence
 
 ## Milestone
 
