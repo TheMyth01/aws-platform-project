@@ -1,68 +1,119 @@
 # FinOps Operating Model: AWS Platform Project
 
-How cloud cost would be governed if this platform ran in a real organisation. This page shows the FinOps Framework as a repeating loop (Inform, Optimize, Operate), not a one-off cost cut.
+This document describes the operating model for the project and clearly separates controls already implemented from target-state controls that are still being built.
 
-## Tagging policy (Inform)
+## Status legend
 
-Five mandatory cost allocation tags on every resource:
+- **IMPLEMENTED**: built/configured and supported by repository or AWS-side evidence.
+- **MEASURED**: supported by captured billing data.
+- **DESIGNED**: target-state control not yet implemented.
+- **MODELLED**: scenario calculation, not realised spend.
+
+## Inform
+
+### Five-tag provisioning policy - IMPLEMENTED with known coverage gap
+
+The Terraform AWS provider applies these default tags:
 
 | Tag | Purpose |
 |---|---|
 | Project | Groups spend to a deliverable or product |
-| Environment | dev, staging, prod, for lifecycle and rightsizing decisions |
-| Owner | Names the accountable person |
-| CostCenter | Maps spend to a budget line |
-| ManagedBy | Records the provisioning method, here Terraform |
+| Environment | Supports lifecycle and environment-level analysis |
+| Owner | Identifies the accountable person |
+| CostCenter | Provides a business allocation dimension |
+| ManagedBy | Records the provisioning/management mechanism |
 
-Rules:
-- Tags are applied at provisioning through Terraform, not added after the fact.
-- Cost allocation tags are activated in the Billing console so they appear in Cost Explorer and the CUR.
-- Target: untagged spend below 1% of total. Anything above is triaged in the monthly review.
+Terraform source: `terraform/envs/dev/providers.tf`.
 
-## Budgets and alerts (Operate)
+Known limitation: provider `default_tags` on the managed EKS node-group resource do not by themselves prove that underlying EC2 instances, EBS volumes and ENIs receive the same tags. The next implementation stage will add and verify worker-resource tag propagation.
 
-- An AWS Budget is set before any spend, with an alert threshold at a defined monthly figure.
-- Alerts notify the owner on forecast-to-exceed, not only on breach, so action is possible before the spend lands.
-- For a non-production stack the threshold is deliberately low, so any accidental always-on resource is caught fast.
+Cost allocation tag activation in AWS Billing is **DESIGNED / TO VERIFY**. It must not be treated as implemented until CLI or console evidence confirms all five keys are Active.
 
-## Anomaly review (Operate)
+### Cost visibility - MEASURED
 
-- Cost is reviewed on a fixed cadence (weekly for an active build phase, monthly when stable).
-- Any unexpected line item or trend break is logged, root-caused, and either accepted with a reason or actioned.
-- The most common anomaly on this class of stack is an orphaned resource after an incomplete teardown, for example a NAT gateway or Elastic IP left running.
+AWS Cost Explorer data for 20-30 April 2026 has been captured and committed under `docs/evidence/`. The analysis identifies EKS and NAT-related charges as the largest measured cost drivers during the project build period.
 
-## Showback (Inform)
+See `docs/cost-analysis.md`.
 
-- A monthly showback report breaks total spend down by tag: Project, Environment, Owner, CostCenter.
-- Showback makes spend visible to the owner without enforcing a hard chargeback, which suits a small team or single-owner portfolio context.
-- The report carries the daily spend trend and the untagged percentage alongside the breakdown.
+### Showback - DESIGNED
 
-## Optimisation backlog (Optimize)
+The target showback report will present:
 
-- Optimisation levers are tracked as a ranked backlog, not handled ad hoc. See finops-savings-opportunity.md for the live list.
-- Each item carries: estimated saving, effort, risk, owner, decision.
-- Items are reviewed each cycle. Adopted, deferred or rejected, each with a reason.
+- total cost;
+- allocation coverage and explicit unallocated spend;
+- cost by Project, Environment, CostCenter and Owner;
+- cost by service within the dev environment;
+- daily trend;
+- cost per cluster-hour / active session where supported by data;
+- variance explanation and actions.
 
-## Decision log (Operate)
+This will be generated from CUR 2.0/Data Exports queried with Athena. No showback is currently claimed as implemented.
 
-Every material cost decision is recorded so the rationale survives:
+## Optimize
 
-| Date | Decision | Rationale | Owner |
-|---|---|---|---|
-| [date] | [e.g. single NAT gateway in dev] | [reduced AZ resilience accepted for non-prod] | Inaam |
+### Optimisation register - IMPLEMENTED as a governance artefact
 
-## Teardown and ephemeral environment control (Operate)
+Opportunities are tracked in `docs/optimisation-register.md` with explicit status, rationale, trade-offs and required evidence.
 
-- Non-production stacks are ephemeral: stood up for active work, torn down after.
-- Teardown is verified, not assumed. Post-destroy checks confirm no EKS cluster, no load balancers, no active NAT gateways, no Elastic IPs, no EC2 worker nodes, and an empty Terraform state.
-- This control is the single largest cost lever on a non-production workload and is evidenced in the teardown records under docs/.
+The register deliberately separates:
 
-## The loop
+- controls already implemented;
+- measured findings;
+- designed changes;
+- modelled scenarios.
 
-Inform feeds Optimize feeds Operate, then back to Inform with better data each cycle:
+No modelled saving is described as realised.
 
-1. Inform: tag, allocate, report, measure untagged spend and unit cost.
-2. Optimize: rank and action the savings backlog, record the trade-offs.
-3. Operate: budgets, anomaly review, showback, decision log, teardown control.
+## Operate
 
-The point of the model is repeatability: cost stays governed continuously, rather than being cleaned up once.
+### Verified teardown - IMPLEMENTED
+
+Non-production infrastructure is torn down after active development/validation sessions and the teardown is verified rather than assumed.
+
+The evidence includes checks for:
+
+- Terraform state;
+- EKS clusters;
+- load balancers;
+- NAT Gateways;
+- Elastic IPs;
+- EC2 worker nodes.
+
+See `docs/week-5-cost-control-teardown.md`.
+
+### AWS Budgets - DESIGNED
+
+Target implementation:
+
+- account/project monthly budget;
+- forecasted threshold notifications;
+- actual-spend threshold notifications;
+- low-cost/zero-spend control for an environment expected to be torn down.
+
+Budgets will be implemented in Terraform before the next instrumented run. No budget is currently claimed as deployed.
+
+### Cost Anomaly Detection - DESIGNED
+
+Target implementation:
+
+- service-dimensional anomaly monitor;
+- anomaly subscription;
+- low absolute impact threshold suitable for a personal lab account;
+- documented limitation that an ephemeral estate provides little historical baseline.
+
+No anomaly monitor is currently claimed as deployed.
+
+### Decision log - IMPLEMENTED as a process
+
+Material cost decisions are recorded in `docs/optimisation-register.md` with date, status and rationale. Future entries will be added when an experiment or implementation has actually occurred.
+
+## Target operating cadence
+
+Once the instrumentation exists, the intended cadence is:
+
+1. **Inform**: refresh cost data, measure allocation coverage, review service/resource drivers.
+2. **Optimize**: rank opportunities by measured value, effort and risk.
+3. **Operate**: implement approved controls, monitor budgets/anomalies, record outcomes and decisions.
+4. Repeat with improved evidence.
+
+The operating model is intentionally evidence-led: a control moves from DESIGNED to IMPLEMENTED only after it exists and can be verified.
