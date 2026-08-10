@@ -81,8 +81,8 @@ module "eks" {
     ManagedBy   = "terraform"
   }
 
-  # Bootstrap admin: you (IAM user running Terraform)
-  admin_user_arn = "arn:aws:iam::373631301915:user/Inaam"
+  # Bootstrap admin principal supplied locally rather than hardcoded in Git.
+  admin_user_arn = var.admin_user_arn
 }
 
 output "eks_cluster_name" {
