@@ -73,6 +73,14 @@ module "eks" {
   node_min_size       = 1
   node_max_size       = 3
 
+  resource_tags = {
+    Project     = var.project_name
+    Environment = var.environment
+    Owner       = var.owner
+    CostCenter  = var.cost_center
+    ManagedBy   = "terraform"
+  }
+
   # Bootstrap admin: you (IAM user running Terraform)
   admin_user_arn = "arn:aws:iam::373631301915:user/Inaam"
 }
