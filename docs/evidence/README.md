@@ -1,6 +1,6 @@
 # FinOps Evidence Register
 
-This directory stores raw evidence used by the FinOps analysis. Numbers in project documentation should be traceable to a file here or to a separately documented AWS API/CLI output.
+This directory stores raw evidence used by the FinOps analysis. Numbers in project documentation should be traceable to a file here or to separately documented AWS API/CLI output.
 
 ## April 2026 Cost Explorer evidence
 
@@ -18,6 +18,11 @@ Files:
 - `cost-explorer-ec2-other-usage-type-2026-04-20_to_2026-04-30.csv` - EC2-Other filtered, grouped by Usage type
 - `cost-explorer-ec2-instances-usage-type-2026-04-20_to_2026-04-30.csv` - EC2-Instances filtered, grouped by Usage type
 - `cost-explorer-vpc-usage-type-2026-04-20_to_2026-04-30.csv` - VPC filtered, grouped by Usage type
+
+## Cost allocation tag evidence
+
+- `cost-allocation-tags-pre-activation-2026-08-07.csv` - AWS Billing export before activation of the five project cost allocation tags
+- `cost-allocation-tag-activation-and-backfill-2026-08-07.md` - CLI evidence showing activation of `Project`, `Environment`, `Owner`, `CostCenter`, and `ManagedBy`, plus successful historical backfill from 1 April 2026
 
 ## Evidence rules
 
