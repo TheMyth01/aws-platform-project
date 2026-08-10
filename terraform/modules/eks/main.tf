@@ -100,6 +100,42 @@ resource "aws_iam_role_policy_attachment" "node_AmazonEC2ContainerRegistryReadOn
 }
 
 # ------------------------------------------------------------------
+# Custom launch template for managed nodes
+#
+# EKS node group tags do not propagate to the underlying EC2 resources.
+# Tag specifications here ensure worker EC2 instances, EBS volumes and ENIs
+# receive the same FinOps allocation tags as the rest of the platform.
+# ------------------------------------------------------------------
+resource "aws_launch_template" "node" {
+  name_prefix = "${local.full_cluster_name}-nodes-"
+
+  tag_specifications {
+    resource_type = "instance"
+    tags = merge(var.resource_tags, {
+      Name = "${local.full_cluster_name}-node"
+    })
+  }
+
+  tag_specifications {
+    resource_type = "volume"
+    tags = merge(var.resource_tags, {
+      Name = "${local.full_cluster_name}-node-volume"
+    })
+  }
+
+  tag_specifications {
+    resource_type = "network-interface"
+    tags = merge(var.resource_tags, {
+      Name = "${local.full_cluster_name}-node-eni"
+    })
+  }
+
+  tags = merge(var.resource_tags, {
+    Name = "${local.full_cluster_name}-node-launch-template"
+  })
+}
+
+# ------------------------------------------------------------------
 # Managed node group — 2 worker EC2 instances in private subnets
 # ------------------------------------------------------------------
 resource "aws_eks_node_group" "this" {
@@ -108,6 +144,11 @@ resource "aws_eks_node_group" "this" {
   node_role_arn   = aws_iam_role.node.arn
   subnet_ids      = var.private_subnet_ids
   instance_types  = var.node_instance_types
+
+  launch_template {
+    id      = aws_launch_template.node.id
+    version = aws_launch_template.node.latest_version
+  }
 
   scaling_config {
     desired_size = var.node_desired_size
@@ -119,9 +160,9 @@ resource "aws_eks_node_group" "this" {
     max_unavailable = 1
   }
 
-  tags = {
+  tags = merge(var.resource_tags, {
     Name = "${local.full_cluster_name}-nodes"
-  }
+  })
 
   depends_on = [
     aws_iam_role_policy_attachment.node_AmazonEKSWorkerNodePolicy,
