@@ -1,0 +1,4 @@
+# Copy this file to terraform.tfvars for local use.
+# terraform.tfvars is ignored by Git.
+
+admin_user_arn = "arn:aws:iam::<ACCOUNT_ID>:user/<IAM_USER>"

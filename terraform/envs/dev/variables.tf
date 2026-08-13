@@ -27,3 +27,8 @@ variable "cost_center" {
   type        = string
   default     = "platform-eng"
 }
+
+variable "admin_user_arn" {
+  description = "IAM principal ARN granted EKS cluster admin access. Set locally via terraform.tfvars or TF_VAR_admin_user_arn; do not hardcode account-specific ARNs in the repository."
+  type        = string
+}

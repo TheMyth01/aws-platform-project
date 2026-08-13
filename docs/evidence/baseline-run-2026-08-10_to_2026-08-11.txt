@@ -1,0 +1,56 @@
+============================================================
+CONTROLLED BASELINE RUN
+============================================================
+Deployment start UTC: 2026-08-10T22:10:06Z
+Stable/verified UTC:   2026-08-10T22:23:12Z
+Stop snapshot UTC:     2026-08-11T07:49:36Z
+Git commit:            93b3dc246fdfe0e646ab2b24f88efadde917f8a3
+
+------------------------------------------------
+|                DescribeCluster               |
++------------------------+---------+-----------+
+|          Name          | Status  |  Version  |
++------------------------+---------+-----------+
+|  aws-platform-dev-main |  ACTIVE |  1.33     |
++------------------------+---------+-----------+
+--------------------------------------------------------------------
+|                         DescribeNodegroup                        |
++---------+------+------+-------------------------------+----------+
+| Desired | Max  | Min  |             Name              | Status   |
++---------+------+------+-------------------------------+----------+
+|  2      |  3   |  1   |  aws-platform-dev-main-nodes  |  ACTIVE  |
++---------+------+------+-------------------------------+----------+
+
+Worker IDs: i-08cac580eb314f792, i-0cad6a3f9d7a9a95c
+----------------------------------------
+|           DescribeInstances          |
++--------------+-----------------------+
+|  CostCenter  |  platform-eng         |
+|  Environment |  dev                  |
+|  InstanceId  |  i-08cac580eb314f792  |
+|  ManagedBy   |  terraform            |
+|  Owner       |  inaam                |
+|  Project     |  aws-platform         |
+|  State       |  running              |
+|  Type        |  t3.small             |
++--------------+-----------------------+
+----------------------------------------
+|           DescribeInstances          |
++--------------+-----------------------+
+|  CostCenter  |  platform-eng         |
+|  Environment |  dev                  |
+|  InstanceId  |  i-0cad6a3f9d7a9a95c  |
+|  ManagedBy   |  terraform            |
+|  Owner       |  inaam                |
+|  Project     |  aws-platform         |
+|  State       |  running              |
+|  Type        |  t3.small             |
++--------------+-----------------------+
+---------------------------------------------------------------------------------------
+|                                 DescribeNatGateways                                 |
++--------------+--------------+-------------------------+---------------+-------------+
+|  CostCenter  | Environment  |           NAT           |    Project    |    State    |
++--------------+--------------+-------------------------+---------------+-------------+
+|  platform-eng|  dev         |  nat-078a18749c5727416  |  aws-platform |  available  |
+|  platform-eng|  dev         |  nat-0357b56c1f3963526  |  aws-platform |  available  |
++--------------+--------------+-------------------------+---------------+-------------+

@@ -1,18 +1,51 @@
 # AWS Platform Project
 
-Production-style AWS platform built end to end with Terraform and EKS, then analysed and cost-optimised as a FinOps case study: cost allocation, rate and usage optimisation, and a quantified saving on a live stack I built and ran myself.
+Production-style AWS platform built end to end with Terraform and Amazon EKS, then analysed as a FinOps case study using measured AWS Cost Explorer data.
 
 ## Recruiter Summary
 
-This project demonstrates practical cloud engineering experience across Terraform, AWS, Kubernetes, EKS, ECR, ALB Ingress, IAM, Helm and FinOps cost-control processes.
+This project demonstrates practical cloud engineering experience across Terraform, AWS networking, EKS, ECR, Kubernetes, ALB Ingress, IAM/IRSA, Helm, troubleshooting, cost visibility and FinOps controls.
 
-It shows the full lifecycle of a cloud platform build: provisioning infrastructure, deploying a containerised application, exposing it publicly through an AWS Application Load Balancer, troubleshooting real deployment issues, validating the live endpoint and safely tearing everything down to avoid unnecessary spend.
+The platform was provisioned, a containerised application was deployed to EKS and exposed through an AWS Application Load Balancer, the live endpoint was validated, real deployment failures were debugged, and the environment was then safely torn down to stop unnecessary non-production spend.
+
+## Status Legend
+
+- **IMPLEMENTED**: built or configured and supported by code or captured evidence in this repository.
+- **MEASURED**: derived from captured AWS billing data committed under `docs/evidence/`.
+- **DESIGNED**: target-state control or optimisation that has not yet been implemented.
+- **MODELLED**: analytical scenario, clearly separated from realised AWS spend.
 
 ## Current Status
 
-Phase 1 (platform build) complete. Phase 2 (FinOps cost analysis) complete.
+- **Phase 1 - Platform build: COMPLETE.**
+- **Phase 2 - FinOps implementation and controlled optimisation: IN PROGRESS, WITH MEASURED RESULTS.**
 
-The platform was built, deployed to EKS behind an ALB, validated, then torn down. Phase 2 analysed the real cost of that stack, identified optimisation levers and quantified a saving. See docs/finops-savings-opportunity.md and docs/finops-operating-model.md.
+The project now includes historical Cost Explorer analysis and controlled CUR 2.0 / Athena experiments.
+
+A controlled baseline using EKS Kubernetes 1.33 measured an EKS control-plane rate of approximately **$0.60/hour**, including a **$0.50/hour extended-support surcharge**.
+
+A second controlled run changed only the EKS version to Kubernetes 1.34 while retaining two `t3.small` workers, two NAT Gateways and the same VPC architecture. CUR 2.0 showed no extended-support Usage line and measured an EKS control-plane rate of approximately **$0.10/hour**.
+
+This produced a measured **83.33% reduction in EKS control-plane cost**.
+
+Normalised gross core infrastructure cost changed from approximately **$0.7666 to $0.2714 per environment-hour**, an observed reduction of approximately **64.6%**. The EKS result is the cleaner causal comparison because EKS version was the isolated variable.
+
+Additional implemented FinOps controls include:
+
+- activated project cost-allocation tags with historical backfill;
+- launch-template tag propagation to EKS worker instances, volumes and network interfaces;
+- CUR 2.0 billing analysis through Amazon Athena;
+- a project-scoped AWS Budget managed through Terraform;
+- a project-scoped Cost Anomaly Detection monitor and daily subscription managed through Terraform;
+- verified teardown discipline for non-production infrastructure.
+
+See:
+
+- `docs/cost-analysis.md`
+- `docs/optimisation-register.md`
+- `docs/finops-operating-model.md`
+- `docs/tagging-strategy.md`
+- `docs/evidence/`
 
 ## Architecture Overview
 
@@ -35,23 +68,25 @@ EKS Pods running the containerised app
 Image pulled from Amazon ECR
 ```
 
-Terraform manages the AWS infrastructure, including the VPC, subnets, route tables, NAT Gateways, EKS cluster, node group, ECR repository, IAM roles and IRSA setup.
+Terraform manages the AWS infrastructure, including the VPC, subnets, route tables, NAT Gateways, EKS cluster, managed node group, ECR repository, IAM roles and IRSA setup.
 
 ## What This Project Demonstrates
 
 - Infrastructure as Code using Terraform
 - AWS VPC design with public, private and database subnet tiers
-- NAT Gateway and route table configuration
-- Amazon ECR repository for container images
+- Per-AZ NAT Gateway and route table design
+- Amazon ECR repository with lifecycle policy
 - Amazon EKS cluster provisioning
 - Managed EKS node groups
 - Kubernetes namespace, deployment, service and ingress manifests
-- AWS Load Balancer Controller installation with Helm
+- AWS Load Balancer Controller installed with Helm
 - IAM Roles for Service Accounts using the EKS OIDC provider
 - Secure Kubernetes runtime settings
-- Real troubleshooting of Kubernetes scheduling and container runtime errors
-- FinOps-style tagging and teardown discipline
-- Evidence-led documentation for portfolio and recruiter review
+- Real troubleshooting of EKS, Kubernetes and container runtime issues
+- Five-tag FinOps tagging strategy applied through Terraform `default_tags`
+- AWS Cost Explorer analysis by service and usage type
+- Verified teardown and orphan-resource checks
+- Evidence-led documentation for recruiter and interview review
 
 ## Technology Stack
 
@@ -67,32 +102,32 @@ Terraform manages the AWS infrastructure, including the VPC, subnets, route tabl
 - PowerShell
 - AWS CLI
 - kubectl
-- FinOps tagging
+- AWS Cost Explorer
 
 ## Repository Structure
 
 ```text
 app/                  Sample containerised application
-docs/                 Project evidence, milestone notes and teardown records
+docs/                 Project evidence, analysis and operating-model documentation
 k8s/                  Kubernetes namespace, deployment, service and ingress manifests
 terraform/bootstrap/  Terraform backend foundation
 terraform/modules/    Reusable Terraform modules
 terraform/envs/dev/   Development environment configuration
 ```
 
-## Completed Milestones
+## Completed Platform Milestones
 
 ### Week 1 - Terraform Bootstrap
 
-Created the foundation for a production-style Terraform workflow.
+Created the foundation for a production-style Terraform workflow using remote state and locking.
 
 ### Week 2 - AWS Networking
 
-Built a reusable VPC module with public, private and database subnet tiers.
+Built a reusable VPC module with public, private and database subnet tiers and a two-AZ NAT pattern.
 
 ### Week 3 - Container Registry
 
-Created and managed an Amazon ECR repository for the application image.
+Created and managed an Amazon ECR repository for the application image, including lifecycle controls.
 
 ### Week 4 - EKS Foundation
 
@@ -119,64 +154,83 @@ The health endpoint returned:
 {"status":"ok"}
 ```
 
-The application endpoint returned:
-
-```json
-{
-  "environment": "dev",
-  "hostname": "pod-name",
-  "message": "Hello from the AWS Platform Project"
-}
-```
-
 ## Issues Resolved
 
-The first EKS node group used t3.micro instances, but the application pods could not schedule because the nodes hit pod capacity limits. The node group was updated to t3.small, Terraform replaced the node group, and the pods then scheduled successfully.
+The project contains a real troubleshooting trail rather than only successful final-state code. Examples include:
 
-During deployment, the first version of the application pods also failed because the container image used a named non-root user while the Kubernetes deployment required runAsNonRoot: true.
+- a managed node group blocked by account-level Free Tier restrictions, diagnosed through the underlying Auto Scaling Group activity;
+- AWS CLI authentication schema incompatibility with a newer `kubectl` client;
+- pod-capacity pressure on `t3.micro` nodes, followed by a move to `t3.small`;
+- `runAsNonRoot` failing with a named container user and being corrected with numeric UID/GID values;
+- ECR images preventing Terraform destroy until tagged and untagged image digests were removed.
 
-This was fixed by adding a numeric runtime user:
+See `docs/lessons-learned.md` and the week-by-week evidence under `docs/`.
 
-```yaml
-runAsUser: 1000
-runAsGroup: 1000
-```
-
-## Cost Control and Teardown
+## Cost Control and Teardown - IMPLEMENTED
 
 After validation, the live AWS resources were safely removed to avoid unnecessary spend.
 
 Final checks confirmed:
 
 - Terraform state was empty
-- No EKS clusters remained
-- No load balancers remained
-- No active NAT Gateways remained
-- No Elastic IPs remained
-- No EC2 worker nodes remained
+- no EKS clusters remained
+- no load balancers remained
+- no active NAT Gateways remained
+- no Elastic IPs remained
+- no EC2 worker nodes remained
 - Git working tree was clean
 
-This is documented in:
+Evidence: `docs/week-5-cost-control-teardown.md`.
 
-- docs/week-5-eks-alb.md
-- docs/week-5-cost-control-teardown.md
+## FinOps Cost Analysis - MEASURED
 
-## FinOps Approach
+The project contains two layers of measured billing evidence.
 
-The project uses consistent tagging to support cost allocation and accountability:
+The first is historical AWS Cost Explorer analysis for 20-30 April 2026, where total unblended Usage cost was **$1.9304346123**.
 
-- Project
-- Environment
-- Owner
-- CostCenter
-- ManagedBy
+The second is a controlled August 2026 experiment using CUR 2.0 and Athena.
 
-This project is designed to show not only how infrastructure is built, but also how it is validated, documented and shut down responsibly.
+Baseline #1 used EKS 1.33 and measured:
 
-## FinOps Cost Analysis (Phase 2)
+- EKS standard control plane: $0.976863
+- EKS extended-support surcharge: $4.884313
+- total EKS: $5.861176
+- effective EKS rate: approximately $0.60/hour
+- gross core infrastructure: $7.488387
 
-Applied the FinOps Framework to the platform built in Phase 1. Inform: five-tag cost allocation, Cost Explorer analysis by service, CUR export to S3. Optimize: ranked savings backlog covering NAT gateway consolidation, spot for non-prod, node rightsizing, ECR lifecycle and untagged spend. Operate: budget alert set first, a tagging and cost allocation policy, and verified teardown at zero spend. Full detail in docs/finops-savings-opportunity.md and docs/finops-operating-model.md.
+Run #2 changed only the EKS version to 1.34 and measured:
+
+- EKS control plane: $1.117474
+- no extended-support Usage line
+- effective EKS rate: approximately $0.10/hour
+- gross core infrastructure: $3.032617
+
+Because Run #2 ran longer, the whole-stack comparison is normalised by environment runtime rather than comparing raw totals.
+
+Normalised gross core infrastructure cost changed from approximately **$0.7666/hour to $0.2714/hour**, an observed reduction of approximately **64.6%**.
+
+The isolated EKS control-plane reduction was **83.33%**.
+
+AWS credits are reported separately from gross economic cost so promotional credits do not obscure the underlying architecture cost.
+
+Evidence:
+
+- `docs/evidence/baseline-run-2026-08-10_to_2026-08-11.txt`
+- `docs/evidence/eks-upgrade-run2-2026-08-12.md`
+- `docs/evidence/run2-timestamps-2026-08-12.txt`
+- `docs/cost-analysis.md`
+
+## FinOps Implementation Roadmap
+
+The next controlled FinOps stages are:
+
+1. run a third controlled experiment changing the dev architecture from two NAT Gateways to one while keeping EKS 1.34 and worker configuration unchanged;
+2. compare NAT fixed cost and resilience trade-offs using CUR 2.0;
+3. produce a tag-aware showback view from Athena;
+4. codify the operational CUR 2.0 / Athena billing pipeline in infrastructure as code;
+5. build an explicitly labelled 730-hour model from reconciled measured rates;
+6. evaluate later compute opportunities such as Spot workers or rightsizing only if worker compute becomes material.
 
 ## CV-Ready Summary
 
-Built a production-style AWS platform (Terraform, EKS, ECR, Kubernetes, Helm, ALB, IRSA, secure runtime), then ran a full FinOps analysis on it: cost allocation tagging, Cost Explorer and CUR analysis, and quantified optimisation levers (NAT gateway, node rightsizing, spot vs on-demand) to evidence accountable cloud spend management across Inform, Optimize and Operate.
+Built and operated a production-style AWS platform using Terraform, EKS, ECR, Kubernetes, Helm, ALB and IRSA; implemented cost-allocation tagging, AWS Budgets and Cost Anomaly Detection; analysed CUR 2.0 billing data with Athena; identified an EKS extended-support cost exposure; and ran a controlled infrastructure experiment that reduced measured EKS control-plane cost by **83.33%**, while maintaining the rest of the test architecture for a like-for-like comparison.

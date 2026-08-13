@@ -63,7 +63,7 @@ module "eks" {
 
   project_name       = var.project_name
   environment        = var.environment
-  kubernetes_version = "1.33"
+  kubernetes_version = "1.34"
 
   vpc_id             = module.vpc.vpc_id
   private_subnet_ids = module.vpc.private_subnet_ids
@@ -73,8 +73,16 @@ module "eks" {
   node_min_size       = 1
   node_max_size       = 3
 
-  # Bootstrap admin: you (IAM user running Terraform)
-  admin_user_arn = "arn:aws:iam::373631301915:user/Inaam"
+  resource_tags = {
+    Project     = var.project_name
+    Environment = var.environment
+    Owner       = var.owner
+    CostCenter  = var.cost_center
+    ManagedBy   = "terraform"
+  }
+
+  # Bootstrap admin principal supplied locally rather than hardcoded in Git.
+  admin_user_arn = var.admin_user_arn
 }
 
 output "eks_cluster_name" {

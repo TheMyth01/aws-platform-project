@@ -54,6 +54,11 @@ variable "node_max_size" {
   default     = 3
 }
 
+variable "resource_tags" {
+  description = "Tags that must propagate to EKS worker EC2 instances, EBS volumes and ENIs for cost allocation"
+  type        = map(string)
+}
+
 variable "admin_user_arn" {
   description = "IAM user ARN to grant cluster admin (kubectl access from laptop)"
   type        = string
