@@ -24,6 +24,11 @@ Files:
 - `cost-allocation-tags-pre-activation-2026-08-07.csv` - AWS Billing export before activation of the five project cost allocation tags
 - `cost-allocation-tag-activation-and-backfill-2026-08-07.md` - CLI evidence showing activation of `Project`, `Environment`, `Owner`, `CostCenter`, and `ManagedBy`, plus successful historical backfill from 1 April 2026
 
+## August 2026 controlled experiment evidence
+
+- `baseline-run-2026-08-10_to_2026-08-11.txt` - controlled EKS 1.33 baseline deployment evidence, including workers, tags and NAT Gateways
+- `run2-timestamps-2026-08-12.txt` - deploy, health-check and destroy timestamps for Run #2
+- `eks-upgrade-run2-2026-08-12.md` - CUR 2.0 / Athena measured comparison showing removal of the EKS extended-support surcharge and the measured 83.33% EKS control-plane cost reduction
 ## Evidence rules
 
 - **MEASURED** means the figure is present in captured AWS output.

@@ -2,10 +2,13 @@
 
 ## Status
 
-**MEASURED:** April 2026 actual usage analysis is supported by Cost Explorer CSV evidence under `docs/evidence/`.
+**MEASURED:** April 2026 actual usage analysis is supported by Cost Explorer evidence.
 
-**MODELLED:** Monthly baselines and optimisation scenarios are not yet published here. They will be added only after pricing and/or CUR 2.0 reconciliation is complete.
+**MEASURED:** August 2026 controlled baseline and optimisation runs are supported by CUR 2.0 / Athena results and captured infrastructure evidence.
 
+**IMPLEMENTED:** project cost-allocation tags, EKS worker tag propagation, verified teardown, AWS Budget and Cost Anomaly Detection controls have been implemented.
+
+**MODELLED:** future monthly or 730-hour scenarios remain separate from realised AWS spend.
 ## Scope
 
 AWS Cost Explorer analysis for the platform build period:
@@ -107,22 +110,92 @@ Two NAT Gateways were deliberately used to build and understand a multi-AZ patte
 
 The $1.9304346123 figure is actual AWS usage from a short-lived build period. A future 730-hour baseline will be a model, not realised spend. No percentage saving will be claimed until the comparison basis is explicit and defensible.
 
+## August 2026 controlled EKS optimisation
+
+A controlled baseline and optimisation run were performed to test one specific cost variable.
+
+### Baseline #1 - EKS 1.33
+
+Measured CUR 2.0 values:
+
+| Component | Usage hours | Gross cost USD |
+|---|---:|---:|
+| EKS standard control plane | 9.768626 | 0.976863 |
+| EKS extended support | 9.768626 | 4.884313 |
+| Total EKS | 9.768626 | 5.861176 |
+
+Effective EKS rate: approximately **$0.60/hour**.
+
+Core infrastructure gross cost was **$7.488387**.
+
+### Run #2 - EKS 1.34
+
+The architecture retained:
+
+- 2 x `t3.small` worker nodes;
+- 2 NAT Gateways;
+- the same VPC architecture;
+- the same tagging configuration.
+
+The only intended experiment variable was the EKS Kubernetes version.
+
+Measured CUR 2.0 values:
+
+| Usage type | Usage hours | Gross cost USD |
+|---|---:|---:|
+| EUW2-AmazonEKS-Hours:perCluster | 11.174742 | 1.117474 |
+
+No `EUW2-AmazonEKS-Hours:extendedSupport` Usage row was present.
+
+Effective EKS rate: approximately **$0.10/hour**.
+
+Core infrastructure gross cost was **$3.032617**.
+
+### Measured result
+
+The measured EKS control-plane rate changed from approximately:
+
+**$0.60/hour -> $0.10/hour**
+
+This is an **83.33% reduction in EKS control-plane cost**.
+
+Normalised to the baseline runtime, the measured gross EKS cost avoided was **$4.884313**.
+
+Whole-stack normalised gross cost changed from:
+
+- Baseline: approximately $0.766575 per environment-hour
+- Run #2: approximately $0.271381 per environment-hour
+
+This is an observed reduction of approximately **64.6%**.
+
+The whole-stack result is secondary to the EKS comparison because NAT Gateway billing granularity and different run durations introduce some variation. The EKS rate change is the stronger causal result because the EKS version was the deliberately isolated variable.
+
+### Credits
+
+AWS credits reduced the cash charge during the experiments.
+
+Gross economic cost and net cash cost are therefore reported separately. The optimisation assessment uses gross Usage cost because credits do not remove the underlying architecture cost.
+
+Evidence:
+
+- `docs/evidence/baseline-run-2026-08-10_to_2026-08-11.txt`
+- `docs/evidence/eks-upgrade-run2-2026-08-12.md`
+- `docs/evidence/run2-timestamps-2026-08-12.txt`
+
 ## Known limitations
 
-- Cost allocation tag activation was not evidenced before the April run.
-- Managed EKS node-group tags do not automatically prove tag coverage on underlying EC2 instances, volumes and ENIs; this will be fixed and measured during the next instrumented run.
-- No CUR 2.0/Data Export evidence exists for April yet.
-- No Athena reconciliation has yet been performed.
-- The April period includes failed/partial provisioning and is not a clean steady-state workload sample.
+- The controlled runs had different durations, so raw total cost is not treated as a like-for-like comparison.
+- NAT Gateway billing is hourly and can introduce billing-granularity differences between short experiments.
+- The whole-stack percentage is therefore an observed normalised result rather than a claim that every component fell by the same percentage.
+- AWS credits materially reduced cash cost, so gross Usage cost is used for optimisation analysis.
+- The CUR 2.0 / Athena pipeline is operational, but the Terraform under `terraform/envs/finops/` currently manages the project Budget and Cost Anomaly Detection controls rather than the billing export pipeline itself.
+- These are short-lived development experiments rather than a production utilisation sample.
 
 ## Next analytical steps
 
-1. Activate the five cost allocation tags and capture CLI evidence.
-2. Request historical tag backfill for April if the account is eligible.
-3. Implement CUR 2.0/Data Exports to S3 in Terraform.
-4. Request historical CUR 2.0 backfill if available.
-5. Fix node-level tag propagation.
-6. Run a controlled instrumented baseline session with precise start/end timestamps.
-7. Reconcile rate x quantity to actual cost in Athena.
-8. Build a 730-hour model from evidenced rates.
-9. Compare explicitly labelled optimisation scenarios with trade-offs.
+1. Run the controlled single-NAT experiment while retaining EKS 1.34 and the same worker configuration.
+2. Measure NAT Gateway fixed-cost reduction and document the resilience trade-off.
+3. Produce a tag-aware Athena showback query.
+4. Codify the operational CUR 2.0 / Athena billing pipeline in infrastructure as code.
+5. Build a 730-hour model using reconciled measured rates and label it explicitly as modelled.
+6. Evaluate compute optimisation only if EC2 worker cost becomes materially significant.
