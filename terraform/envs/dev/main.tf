@@ -14,9 +14,9 @@ module "vpc" {
   private_subnets = ["10.0.11.0/24", "10.0.12.0/24"]
   db_subnets      = ["10.0.21.0/24", "10.0.22.0/24"]
 
-  # Dev: HA pattern (2 NATs). We pay during active sessions, destroy after.
+  # Run #3: single NAT Gateway cost experiment. Destroy after measurement.
   enable_nat_gateway = true
-  single_nat_gateway = false
+  single_nat_gateway = true
 }
 
 # ------------------------------------------------------------------
