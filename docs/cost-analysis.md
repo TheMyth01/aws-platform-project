@@ -1,4 +1,4 @@
-# FinOps Cost Analysis
+﻿# FinOps Cost Analysis
 
 ## Status
 
@@ -104,7 +104,7 @@ The EKS control plane and NAT Gateways charge while provisioned whether or not t
 
 ### 3. NAT architecture deserves separate treatment from compute
 
-Two NAT Gateways were deliberately used to build and understand a multi-AZ pattern. For production this resilience can be appropriate. For dev, a single NAT Gateway may be an acceptable cost/resilience trade-off and will be tested as a separate optimisation scenario.
+Two NAT Gateways were deliberately used to build and understand a multi-AZ pattern. Run #3 subsequently tested the dev environment with one NAT Gateway while retaining EKS 1.34, two t3.small workers and the same VPC/subnet structure. The controlled experiment measured the cost benefit while also documenting the loss of independent AZ-local egress and the presence of cross-AZ traffic.
 
 ### 4. Measured and modelled figures must remain separate
 
@@ -182,6 +182,98 @@ Evidence:
 - `docs/evidence/eks-upgrade-run2-2026-08-12.md`
 - `docs/evidence/run2-timestamps-2026-08-12.txt`
 
+## August 2026 controlled NAT optimisation
+
+Run #3 tested a second isolated infrastructure variable.
+
+The environment retained:
+
+- Amazon EKS Kubernetes 1.34;
+- 2 x `t3.small` worker nodes;
+- the same VPC and subnet structure;
+- the same cost-allocation tagging configuration.
+
+The intended experiment variable was NAT Gateway count:
+
+- Run #2: 2 NAT Gateways
+- Run #3: 1 NAT Gateway
+
+### Run #3 measured values
+
+CUR 2.0 / Athena measured:
+
+| Component | Usage | Gross cost USD |
+|---|---:|---:|
+| EKS control plane | 27.076600 hours | 2.707660 |
+| t3.small workers | 53.974445 hours | 1.273797 |
+| NAT Gateway hours | 28.000000 hours | 1.400000 |
+| NAT data processing | 0.501710 GB | 0.025086 |
+| EBS gp3 | 1.451613 | 0.134710 |
+| Public IPv4 in-use | 27.036666 hours | 0.135183 |
+| Public IPv4 idle | 0.047223 hours | 0.000236 |
+| **Core infrastructure total** | | **5.676672** |
+
+Measured EKS rate remained approximately **$0.10/hour**, confirming the EKS lifecycle optimisation remained in place.
+
+Normalised core infrastructure cost was approximately:
+
+**$0.209652 per environment-hour**
+
+Run #2 measured approximately:
+
+**$0.271381 per environment-hour**
+
+The observed normalised whole-stack reduction was therefore approximately:
+
+**22.75%**
+
+This whole-stack figure is secondary because the controlled runs had different durations and AWS hourly billing boundaries affect short-lived experiments.
+
+### Fixed networking comparison
+
+The measured AWS unit rates were:
+
+- NAT Gateway: **$0.05 per NAT Gateway-hour**
+- Public IPv4: approximately **$0.005 per address-hour**
+
+The fixed architectural rate therefore changes from:
+
+- two NAT Gateways plus two associated public IPv4 addresses: **$0.11/hour**
+- one NAT Gateway plus one associated public IPv4 address: **$0.055/hour**
+
+This represents a **50% reduction in the fixed NAT Gateway plus associated public IPv4 rate**.
+
+This is the cleaner architectural result because NAT Gateway count was the deliberately isolated infrastructure variable.
+
+### Engineering trade-off
+
+CUR also recorded regional inter-AZ usage during Run #3:
+
+- InterZone-Out: 0.255191
+- InterZone-In: 0.267666
+
+The corresponding unblended cost in this low-traffic experiment was $0.00.
+
+The single-NAT design reduces fixed non-production cost but removes independent AZ-local outbound egress. Traffic originating in the other Availability Zone can also traverse AZ boundaries to use the shared NAT Gateway.
+
+For production workloads, resilience requirements and higher traffic volumes may justify retaining a NAT Gateway per AZ.
+
+### Modelled 730-hour scenario
+
+Using the measured fixed-rate difference:
+
+$0.11/hour - $0.055/hour = $0.055/hour
+
+At 730 hours this equates to:
+
+**$40.15/month**
+
+This value is **MODELLED**, not realised AWS monthly spend.
+
+Evidence:
+
+- `docs/evidence/run3-timestamps-2026-08-13_to_2026-08-14.txt`
+- `docs/evidence/single-nat-run3-2026-08-13_to_2026-08-14.md`
 ## Known limitations
 
 - The controlled runs had different durations, so raw total cost is not treated as a like-for-like comparison.
@@ -193,9 +285,7 @@ Evidence:
 
 ## Next analytical steps
 
-1. Run the controlled single-NAT experiment while retaining EKS 1.34 and the same worker configuration.
-2. Measure NAT Gateway fixed-cost reduction and document the resilience trade-off.
-3. Produce a tag-aware Athena showback query.
-4. Codify the operational CUR 2.0 / Athena billing pipeline in infrastructure as code.
-5. Build a 730-hour model using reconciled measured rates and label it explicitly as modelled.
-6. Evaluate compute optimisation only if EC2 worker cost becomes materially significant.
+1. Produce a tag-aware Athena showback query using the activated project cost-allocation tags.
+2. Codify the operational CUR 2.0 / Athena billing pipeline in infrastructure as code.
+3. Extend the 730-hour model using reconciled measured EKS and networking rates while keeping it explicitly labelled as modelled.
+4. Evaluate compute optimisation only if EC2 worker cost becomes materially significant.
