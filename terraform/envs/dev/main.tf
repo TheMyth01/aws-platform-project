@@ -14,7 +14,8 @@ module "vpc" {
   private_subnets = ["10.0.11.0/24", "10.0.12.0/24"]
   db_subnets      = ["10.0.21.0/24", "10.0.22.0/24"]
 
-  # Run #3: single NAT Gateway cost experiment. Destroy after measurement.
+  # Dev cost target: measured single-NAT default. Production should evaluate
+  # one NAT per AZ where independent AZ-local egress resilience is required.
   enable_nat_gateway = true
   single_nat_gateway = true
 }
