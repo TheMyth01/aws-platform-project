@@ -1,4 +1,4 @@
-﻿# FinOps Cost Analysis
+# FinOps Cost Analysis
 
 ## Status
 

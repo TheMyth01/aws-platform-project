@@ -1,4 +1,4 @@
-﻿# FinOps Optimisation Register
+# FinOps Optimisation Register
 
 This register separates implemented controls, measured optimisation results and future opportunities.
 
