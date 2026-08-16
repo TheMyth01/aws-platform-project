@@ -37,6 +37,11 @@ Files:
 - `tag-aware-showback-2026-08-10_to_2026-08-15.md` - measured cost-weighted allocation coverage, business-facing showback and zero-difference reconciliation to raw CUR gross Usage cost
 - query logic: `../../sql/cur-showback.sql`
 
+## CUR 2.0 / Athena IaC adoption evidence
+
+- `cur2-iac-adoption-2026-08-16.md` - brownfield adoption of the live CUR 2.0 S3, Glue and BCM Data Exports pipeline into Terraform, including provider-boundary handling and two consecutive zero-change plans
+- Terraform implementation: `../../terraform/envs/finops/billing-pipeline.tf`
+
 ## Evidence rules
 
 - **MEASURED** means the figure is present in captured AWS output.
