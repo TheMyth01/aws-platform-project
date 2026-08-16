@@ -6,9 +6,10 @@
 
 **MEASURED:** August 2026 controlled baseline and optimisation runs are supported by CUR 2.0 / Athena results and captured infrastructure evidence.
 
-**IMPLEMENTED:** project cost-allocation tags, EKS worker tag propagation, verified teardown, AWS Budget and Cost Anomaly Detection controls have been implemented.
+**IMPLEMENTED:** project cost-allocation tags, EKS worker tag propagation, verified teardown, AWS Budget, Cost Anomaly Detection controls and reconciled tag-aware showback have been implemented.
 
 **MODELLED:** future monthly or 730-hour scenarios remain separate from realised AWS spend.
+
 ## Scope
 
 AWS Cost Explorer analysis for the platform build period:
@@ -163,8 +164,8 @@ Normalised to the baseline runtime, the measured gross EKS cost avoided was **$4
 
 Whole-stack normalised gross cost changed from:
 
-- Baseline: approximately $0.766575 per environment-hour
-- Run #2: approximately $0.271381 per environment-hour
+- Baseline: approximately $0.766575 per EKS-metered environment-hour
+- Run #2: approximately $0.271381 per EKS-metered environment-hour
 
 This is an observed reduction of approximately **64.6%**.
 
@@ -217,11 +218,11 @@ Measured EKS rate remained approximately **$0.10/hour**, confirming the EKS life
 
 Normalised core infrastructure cost was approximately:
 
-**$0.209652 per environment-hour**
+**$0.209652 per EKS-metered environment-hour**
 
 Run #2 measured approximately:
 
-**$0.271381 per environment-hour**
+**$0.271381 per EKS-metered environment-hour**
 
 The observed normalised whole-stack reduction was therefore approximately:
 
@@ -274,6 +275,33 @@ Evidence:
 
 - `docs/evidence/run3-timestamps-2026-08-13_to_2026-08-14.txt`
 - `docs/evidence/single-nat-run3-2026-08-13_to_2026-08-14.md`
+
+## August 2026 tag-aware showback
+
+The CUR 2.0 `resource_tags` field is a map and exposes the five activated ownership dimensions as `user_project`, `user_environment`, `user_owner`, `user_cost_center` and `user_managed_by`.
+
+For gross `Usage` cost from 10 to 15 August 2026:
+
+| Allocation method | Gross cost USD | Interpretation |
+|---|---:|---|
+| DIRECTLY_ALLOCATED | 15.854914 | All five ownership dimensions populated in CUR |
+| RULE_ALLOCATED | 0.343704 | NAT-associated public IPv4 Usage attributed from the controlled ENI/timeline evidence |
+| UNALLOCATED | 0.064047 | Shared/account-level Cost Explorer, Athena and S3 overhead retained without forced allocation |
+| **Total** | **16.262665** | **Fully reconciled to raw CUR Usage cost** |
+
+Direct tag coverage was **97.49%** by gross Usage cost. Using the underlying measured cost values, direct plus evidence-based rule allocation produced approximately **99.61% attributable cost coverage**.
+
+The rule allocation was added only after the public IPv4 Usage was drilled down to untagged network-interface rows whose timing matched the known controlled topology: two NAT Gateways in Baseline #1, two in Run #2 and one in Run #3. The rule is therefore explicitly scoped to this experiment and is not presented as a generic AWS allocation rule.
+
+The remaining **$0.064047**, approximately **0.39%**, is kept visible as shared/unallocated account tooling spend rather than being assigned arbitrarily.
+
+The enhanced showback reconciled to raw CUR gross Usage cost with a difference of **$0.0000000000**.
+
+Evidence:
+
+- `docs/evidence/tag-aware-showback-2026-08-10_to_2026-08-15.md`
+- `sql/cur-showback.sql`
+
 ## Known limitations
 
 - The controlled runs had different durations, so raw total cost is not treated as a like-for-like comparison.
@@ -281,11 +309,12 @@ Evidence:
 - The whole-stack percentage is therefore an observed normalised result rather than a claim that every component fell by the same percentage.
 - AWS credits materially reduced cash cost, so gross Usage cost is used for optimisation analysis.
 - The CUR 2.0 / Athena pipeline is operational, but the Terraform under `terraform/envs/finops/` currently manages the project Budget and Cost Anomaly Detection controls rather than the billing export pipeline itself.
+- The public IPv4 rule allocation is evidence-based and window-specific; it should not be reused for unrelated resources without equivalent attribution evidence.
 - These are short-lived development experiments rather than a production utilisation sample.
 
 ## Next analytical steps
 
-1. Produce a tag-aware Athena showback query using the activated project cost-allocation tags.
-2. Codify the operational CUR 2.0 / Athena billing pipeline in infrastructure as code.
+1. Codify the operational CUR 2.0 / Athena billing pipeline in infrastructure as code.
+2. Document a shared FinOps tooling-cost policy for the remaining approximately 0.39% account-level overhead.
 3. Extend the 730-hour model using reconciled measured EKS and networking rates while keeping it explicitly labelled as modelled.
 4. Evaluate compute optimisation only if EC2 worker cost becomes materially significant.
