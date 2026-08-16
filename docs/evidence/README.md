@@ -31,6 +31,12 @@ Files:
 - `eks-upgrade-run2-2026-08-12.md` - CUR 2.0 / Athena measured comparison showing removal of the EKS extended-support surcharge and the measured 83.33% EKS control-plane cost reduction
 - `run3-timestamps-2026-08-13_to_2026-08-14.txt` - deploy, health-check, pre-destroy and destroy timestamps for Run #3
 - `single-nat-run3-2026-08-13_to_2026-08-14.md` - CUR 2.0 / Athena measured comparison of two NAT Gateways versus one, including fixed networking savings and resilience trade-offs
+
+## Tag-aware showback evidence
+
+- `tag-aware-showback-2026-08-10_to_2026-08-15.md` - measured cost-weighted allocation coverage, business-facing showback and zero-difference reconciliation to raw CUR gross Usage cost
+- query logic: `../../sql/cur-showback.sql`
+
 ## Evidence rules
 
 - **MEASURED** means the figure is present in captured AWS output.
