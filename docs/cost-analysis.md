@@ -6,7 +6,7 @@
 
 **MEASURED:** August 2026 controlled baseline and optimisation runs are supported by CUR 2.0 / Athena results and captured infrastructure evidence.
 
-**IMPLEMENTED:** project cost-allocation tags, EKS worker tag propagation, verified teardown, AWS Budget, Cost Anomaly Detection controls and reconciled tag-aware showback have been implemented.
+**IMPLEMENTED:** project cost-allocation tags, EKS worker tag propagation, verified teardown, AWS Budget, Cost Anomaly Detection controls, reconciled tag-aware showback and the stable CUR 2.0 / Athena billing pipeline IaC have been implemented.
 
 **MODELLED:** future monthly or 730-hour scenarios remain separate from realised AWS spend.
 
@@ -302,19 +302,33 @@ Evidence:
 - `docs/evidence/tag-aware-showback-2026-08-10_to_2026-08-15.md`
 - `sql/cur-showback.sql`
 
+## August 2026 CUR 2.0 / Athena IaC adoption
+
+The existing operational billing pipeline was brought under Terraform management as a brownfield adoption rather than rebuilt.
+
+The stable Terraform scope now includes the existing billing S3 bucket, public-access block, ownership controls, SSE-S3 encryption configuration, delivery bucket policy, Glue catalog database and BCM Data Export. Historical billing data and the working export were preserved.
+
+The live export uses Athena output. Because the native `hashicorp/aws` BCM Data Exports resource did not accept the live `ATHENA` output type, the export itself is represented with the official `hashicorp/awscc` provider while the remaining AWS resources continue to use `hashicorp/aws`.
+
+After import, an older Cost Anomaly Detection monitor drift was identified and reconciled in configuration without applying a replacement. `terraform validate` succeeded and two consecutive `terraform plan` runs returned **no changes**.
+
+Evidence:
+
+- `terraform/envs/finops/billing-pipeline.tf`
+- `docs/evidence/cur2-iac-adoption-2026-08-16.md`
+
 ## Known limitations
 
 - The controlled runs had different durations, so raw total cost is not treated as a like-for-like comparison.
 - NAT Gateway billing is hourly and can introduce billing-granularity differences between short experiments.
 - The whole-stack percentage is therefore an observed normalised result rather than a claim that every component fell by the same percentage.
 - AWS credits materially reduced cash cost, so gross Usage cost is used for optimisation analysis.
-- The CUR 2.0 / Athena pipeline is operational, but the Terraform under `terraform/envs/finops/` currently manages the project Budget and Cost Anomaly Detection controls rather than the billing export pipeline itself.
+- The external Glue table is intentionally not frozen into Terraform because its CUR-derived schema can evolve independently of the stable billing infrastructure.
 - The public IPv4 rule allocation is evidence-based and window-specific; it should not be reused for unrelated resources without equivalent attribution evidence.
 - These are short-lived development experiments rather than a production utilisation sample.
 
 ## Next analytical steps
 
-1. Codify the operational CUR 2.0 / Athena billing pipeline in infrastructure as code.
-2. Document a shared FinOps tooling-cost policy for the remaining approximately 0.39% account-level overhead.
-3. Extend the 730-hour model using reconciled measured EKS and networking rates while keeping it explicitly labelled as modelled.
-4. Evaluate compute optimisation only if EC2 worker cost becomes materially significant.
+1. Document a shared FinOps tooling-cost policy for the remaining approximately 0.39% account-level overhead.
+2. Extend the 730-hour model using reconciled measured EKS and networking rates while keeping it explicitly labelled as modelled.
+3. Evaluate compute optimisation only if EC2 worker cost becomes materially significant.
