@@ -19,6 +19,7 @@ This register separates implemented controls, measured optimisation results and 
 | EKS worker instance, EBS and ENI tag propagation | IMPLEMENTED | `terraform/modules/eks/main.tf` | Reduce unallocated infrastructure spend |
 | AWS Cost Explorer analysis | MEASURED | `docs/cost-analysis.md`, `docs/evidence/` | Identify actual cost drivers |
 | CUR 2.0 / Athena billing analysis | MEASURED / OPERATIONAL | `docs/evidence/eks-upgrade-run2-2026-08-12.md` | Hourly and usage-type-level cost analysis |
+| Tag-aware CUR / Athena showback | MEASURED / IMPLEMENTED | `sql/cur-showback.sql`, `docs/evidence/tag-aware-showback-2026-08-10_to_2026-08-15.md` | Convert allocation metadata into reconciled business-facing cost ownership |
 | Project AWS Budget | IMPLEMENTED - TERRAFORM MANAGED | `terraform/envs/finops/` | Alert on project cost thresholds |
 | Cost Anomaly Detection monitor | IMPLEMENTED - TERRAFORM MANAGED | `terraform/envs/finops/` | Detect unexpected project spend |
 | Daily anomaly subscription | IMPLEMENTED - TERRAFORM MANAGED | `terraform/envs/finops/` | Deliver anomaly notifications |
@@ -85,12 +86,25 @@ The 50% fixed networking result is the cleaner architectural comparison because 
 The single-NAT design has an explicit resilience trade-off: it removes independent AZ-local egress and can cause traffic from the second Availability Zone to cross AZ boundaries before using the shared NAT Gateway.
 
 For the low-traffic controlled Run #3, CUR recorded InterZone usage but $0.00 corresponding unblended cost.
+
+## Allocation and showback result
+
+For gross `Usage` cost from 10 to 15 August 2026, the tag-aware Athena showback measured:
+
+- **97.49% allocated gross cost** across all five required ownership dimensions;
+- **2.51% unallocated gross cost**, retained explicitly for remediation or shared-cost policy;
+- raw CUR gross Usage cost of **$16.262665**;
+- showback gross Usage cost of **$16.262665**;
+- reconciliation difference of **$0.0000000000**.
+
+The allocation KPI is cost-weighted rather than row-weighted so low- and zero-cost CUR rows do not distort the ownership view.
+
 ## Optimisation backlog
 
 | Priority | Opportunity | Status | Why it matters | Trade-off / limitation | Next evidence required |
 |---:|---|---|---|---|---|
-| 1 | Tag-aware Athena showback | DESIGNED - NEXT | Converts allocation metadata into business-facing cost visibility | Depends on billing tag coverage | Athena allocation query and output |
-| 2 | CUR 2.0 / Athena pipeline as IaC | DESIGNED | Makes the operational billing pipeline reproducible | Requires additional Terraform design | Terraform code and validation |
+| 1 | CUR 2.0 / Athena pipeline as IaC | DESIGNED - NEXT | Makes the operational billing pipeline reproducible | Requires additional Terraform design | Terraform code and validation |
+| 2 | Unallocated-cost policy | DESIGNED | Turns the remaining 2.51% into an explicit tagging, shared-cost or account-level treatment | Must avoid arbitrary allocation | Usage-type drill-down and documented rule |
 | 3 | 730-hour baseline model | MODELLED - NOT YET PUBLISHED | Supports monthly decision scenarios | Must not be confused with realised spend | Reconciled measured rates |
 | 4 | Spot worker nodes for non-prod | DESIGNED | May reduce worker compute cost | Interruptible capacity; compute is currently a smaller cost driver | Controlled pricing / workload test |
 | 5 | VPC endpoints for ECR/S3 | DESIGNED | May reduce NAT processing on sufficiently high private-service traffic | Interface endpoint hourly charges may exceed savings at low traffic | Break-even analysis |
@@ -114,3 +128,4 @@ The project first identified the largest cost drivers, then changed one architec
 | 2026-08-13 | Deploy EKS 1.34 dev environment with one NAT Gateway | IMPLEMENTED EXPERIMENT CONTROL | Isolate NAT Gateway count while retaining the Run #2 EKS and worker configuration |
 | 2026-08-14 | Complete and destroy single-NAT Run #3 | MEASURED | Preserve controlled runtime and verify clean teardown |
 | 2026-08-15 | Reconcile Run #3 using CUR 2.0 / Athena | MEASURED | Confirm 50% fixed networking rate reduction and document resilience trade-off |
+| 2026-08-16 | Build and reconcile tag-aware Athena showback | MEASURED / IMPLEMENTED | Convert five cost-allocation tags into an ownership view with 97.49% cost coverage and zero reconciliation difference |
