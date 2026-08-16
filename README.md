@@ -8,7 +8,7 @@ This project demonstrates practical cloud engineering and FinOps experience acro
 
 The platform was provisioned, a containerised application was deployed to EKS and exposed through an AWS Application Load Balancer, the live endpoint was validated, real deployment failures were debugged, and the environment was then safely torn down to stop unnecessary non-production spend.
 
-The FinOps work goes beyond generic recommendations: cost drivers were identified from measured AWS billing data, one infrastructure variable was changed at a time, the result was measured through CUR 2.0 / Athena, engineering trade-offs were documented alongside the cost outcome, and allocation outputs were reconciled back to raw CUR.
+The FinOps work goes beyond generic recommendations: cost drivers were identified from measured AWS billing data, one infrastructure variable was changed at a time, the result was measured through CUR 2.0 / Athena, engineering trade-offs were documented alongside the cost outcome, allocation outputs were reconciled back to raw CUR, and the live billing pipeline was subsequently adopted into Terraform with a zero-change plan.
 
 ## Status Legend
 
@@ -20,9 +20,9 @@ The FinOps work goes beyond generic recommendations: cost drivers were identifie
 ## Current Status
 
 - **Phase 1 - Platform build: COMPLETE.**
-- **Phase 2 - FinOps implementation and controlled optimisation: ADVANCED, WITH TWO MEASURED OPTIMISATIONS AND RECONCILED SHOWBACK.**
+- **Phase 2 - Core FinOps implementation and controlled optimisation: COMPLETE.**
 
-The project now includes historical Cost Explorer analysis, three controlled CUR 2.0 / Athena runs and a tag-aware ownership showback.
+The project includes historical Cost Explorer analysis, three controlled CUR 2.0 / Athena runs, a reconciled tag-aware ownership showback and an operational billing pipeline adopted into Terraform without recreating the live resources.
 
 ### Measured FinOps Results
 
@@ -50,6 +50,7 @@ Additional implemented FinOps controls include:
 - launch-template tag propagation to EKS worker instances, volumes and network interfaces;
 - CUR 2.0 billing analysis through Amazon Athena;
 - tag-aware Athena showback with direct, rule-based and unallocated cost treatment;
+- CUR 2.0 billing bucket, security controls, Glue database and Data Export represented in Terraform after brownfield import;
 - a project-scoped AWS Budget managed through Terraform;
 - a project-scoped Cost Anomaly Detection monitor and daily subscription managed through Terraform;
 - verified teardown discipline and orphan-resource checks for non-production infrastructure.
@@ -61,7 +62,9 @@ See:
 - `docs/finops-operating-model.md`
 - `docs/tagging-strategy.md`
 - `docs/evidence/tag-aware-showback-2026-08-10_to_2026-08-15.md`
+- `docs/evidence/cur2-iac-adoption-2026-08-16.md`
 - `sql/cur-showback.sql`
+- `terraform/envs/finops/billing-pipeline.tf`
 
 ## Architecture Overview
 
@@ -108,6 +111,8 @@ The dev environment now defaults to a measured single-NAT cost target. The VPC m
 - Cost-weighted showback by Project, Environment, CostCenter, Owner and ManagedBy
 - Explicit direct-versus-rule allocation treatment for indirectly attributable spend
 - Financial reconciliation of showback back to raw CUR Usage cost
+- Brownfield IaC adoption of an existing live billing pipeline with a zero-change Terraform plan
+- Provider capability evaluation: standard AWS provider for most resources and AWS Cloud Control provider for the existing Athena Data Export
 - AWS Budget and Cost Anomaly Detection controls managed through Terraform
 - Controlled cost optimisation with measured before/after evidence
 - Explicit separation of measured, implemented, designed and modelled claims
@@ -117,6 +122,8 @@ The dev environment now defaults to a measured single-NAT cost target. The VPC m
 ## Technology Stack
 
 - Terraform
+- HashiCorp AWS provider
+- HashiCorp AWS Cloud Control (`awscc`) provider
 - AWS VPC
 - Amazon ECR
 - Amazon EKS
@@ -129,7 +136,9 @@ The dev environment now defaults to a measured single-NAT cost target. The VPC m
 - AWS CLI
 - kubectl
 - AWS Cost Explorer
-- AWS CUR 2.0
+- AWS CUR 2.0 / BCM Data Exports
+- Amazon S3
+- AWS Glue Data Catalog
 - Amazon Athena
 - SQL
 - AWS Budgets
@@ -145,7 +154,7 @@ sql/                  CUR diagnostics, allocation and showback SQL
 terraform/bootstrap/  Terraform backend foundation
 terraform/modules/    Reusable Terraform modules
 terraform/envs/dev/   Development environment configuration
-terraform/envs/finops/ FinOps governance controls
+terraform/envs/finops/ FinOps governance controls and billing pipeline IaC
 ```
 
 ## Completed Platform Milestones
@@ -195,7 +204,8 @@ The project contains a real troubleshooting trail rather than only successful fi
 - AWS CLI authentication schema incompatibility with a newer `kubectl` client;
 - pod-capacity pressure on `t3.micro` nodes, followed by a move to `t3.small`;
 - `runAsNonRoot` failing with a named container user and being corrected with numeric UID/GID values;
-- ECR images preventing Terraform destroy until tagged and untagged image digests were removed.
+- ECR images preventing Terraform destroy until tagged and untagged image digests were removed;
+- a provider capability mismatch where the native AWS provider rejected an existing Athena Data Export, resolved by modelling only that export with the official AWS Cloud Control provider rather than altering the live configuration.
 
 See `docs/lessons-learned.md` and the week-by-week evidence under `docs/`.
 
@@ -284,6 +294,12 @@ Measured gross `Usage` cost for the showback window was **$16.262665**.
 
 The rule-allocated amount is the NAT-associated public IPv4 Usage identified from untagged network-interface rows whose timing matched the known two-NAT, two-NAT, one-NAT experiment sequence. It is explicitly kept separate from direct tag coverage and is not treated as a general AWS allocation rule.
 
+### Billing pipeline IaC adoption - 16 August 2026
+
+The existing CUR 2.0 pipeline was imported into Terraform rather than recreated. The stable scope includes the billing S3 bucket and security controls, delivery policy, Glue catalog database and the live BCM Data Export.
+
+The live export uses Athena output, so the export itself is represented with the official `hashicorp/awscc` provider while the remaining resources use `hashicorp/aws`. After import and reconciliation of pre-existing anomaly-monitor drift, `terraform validate` succeeded and two consecutive `terraform plan` runs returned **no changes**. No apply was required.
+
 Evidence:
 
 - `docs/evidence/baseline-run-2026-08-10_to_2026-08-11.txt`
@@ -292,17 +308,18 @@ Evidence:
 - `docs/evidence/run3-timestamps-2026-08-13_to_2026-08-14.txt`
 - `docs/evidence/single-nat-run3-2026-08-13_to_2026-08-14.md`
 - `docs/evidence/tag-aware-showback-2026-08-10_to_2026-08-15.md`
+- `docs/evidence/cur2-iac-adoption-2026-08-16.md`
 - `sql/cur-showback.sql`
+- `terraform/envs/finops/billing-pipeline.tf`
 - `docs/cost-analysis.md`
 
-## FinOps Implementation Roadmap
+## Further FinOps Extensions
 
-The next FinOps stages are deliberately selected from measured evidence rather than generic cloud-cost advice:
+The core portfolio implementation is complete. Further work should be selected from measured evidence rather than added for breadth alone:
 
-1. codify the operational CUR 2.0 / Athena billing pipeline in infrastructure as code;
-2. document a shared FinOps tooling-cost policy for the remaining approximately 0.39% account-level overhead;
-3. extend the explicitly labelled 730-hour model using reconciled measured EKS and networking rates;
-4. evaluate later compute opportunities such as Spot workers or rightsizing only if worker compute becomes materially significant.
+1. document a shared FinOps tooling-cost policy for the remaining approximately 0.39% account-level overhead;
+2. extend the explicitly labelled 730-hour model using reconciled measured EKS and networking rates;
+3. evaluate later compute opportunities such as Spot workers or rightsizing only if worker compute becomes materially significant.
 
 ## Interview Narrative
 
@@ -312,8 +329,8 @@ The project follows a repeatable FinOps decision loop:
 
 A concise interview example is:
 
-> I built a production-style EKS platform in Terraform and instrumented the cost side with allocation tags, Cost Explorer, CUR 2.0 / Athena, Budgets and anomaly controls. CUR identified an EKS extended-support surcharge, so I ran a controlled 1.33-to-1.34 experiment that reduced the measured EKS control-plane rate from about $0.60/hour to $0.10/hour, an 83.33% reduction. I then isolated NAT architecture in a second controlled experiment: moving the dev environment from two NAT Gateways to one cut the fixed NAT plus associated IPv4 rate by 50%, while I explicitly documented the resilience and cross-AZ trade-off rather than treating cheaper as automatically better. Finally, I built a tag-aware Athena showback: 97.49% of gross Usage cost was directly allocated, and an evidence-based rule for NAT-associated public IPv4 raised attributable coverage to about 99.61%. The enhanced showback reconciled exactly to raw CUR.
+> I built a production-style EKS platform in Terraform and instrumented the cost side with allocation tags, Cost Explorer, CUR 2.0 / Athena, Budgets and anomaly controls. CUR identified an EKS extended-support surcharge, so I ran a controlled 1.33-to-1.34 experiment that reduced the measured EKS control-plane rate from about $0.60/hour to $0.10/hour, an 83.33% reduction. I then isolated NAT architecture in a second controlled experiment: moving the dev environment from two NAT Gateways to one cut the fixed NAT plus associated IPv4 rate by 50%, while I explicitly documented the resilience and cross-AZ trade-off rather than treating cheaper as automatically better. I built a tag-aware Athena showback where 97.49% of gross Usage cost was directly allocated and an evidence-based rule raised attributable coverage to about 99.61%, with zero reconciliation difference. Finally, I adopted the live CUR 2.0 billing pipeline into Terraform as a brownfield IaC exercise and proved a zero-change plan rather than recreating working historical resources.
 
 ## CV-Ready Summary
 
-Built and operated a production-style AWS platform using Terraform, EKS, ECR, Kubernetes, Helm, ALB and IRSA; implemented cost-allocation tagging, AWS Budgets and Cost Anomaly Detection; analysed CUR 2.0 billing data with Athena; identified and removed an EKS extended-support cost exposure through a controlled experiment that reduced measured EKS control-plane cost by **83.33%**; ran a second controlled architecture experiment that reduced the fixed NAT Gateway plus associated public IPv4 rate by **50%**; and built a reconciled tag-aware showback with approximately **99.61% attributable gross Usage cost coverage**, while retaining direct, rule-based and genuinely unallocated cost as separate categories.
+Built and operated a production-style AWS platform using Terraform, EKS, ECR, Kubernetes, Helm, ALB and IRSA; implemented cost-allocation tagging, AWS Budgets and Cost Anomaly Detection; analysed CUR 2.0 billing data with Athena; identified and removed an EKS extended-support cost exposure through a controlled experiment that reduced measured EKS control-plane cost by **83.33%**; ran a second controlled architecture experiment that reduced the fixed NAT Gateway plus associated public IPv4 rate by **50%**; built a reconciled tag-aware showback with approximately **99.61% attributable gross Usage cost coverage**; and adopted the live CUR 2.0 / Athena billing pipeline into Terraform with a validated **zero-change plan**, preserving historical data and separating direct, rule-based and genuinely unallocated cost treatment.
