@@ -20,6 +20,7 @@ This register separates implemented controls, measured optimisation results and 
 | AWS Cost Explorer analysis | MEASURED | `docs/cost-analysis.md`, `docs/evidence/` | Identify actual cost drivers |
 | CUR 2.0 / Athena billing analysis | MEASURED / OPERATIONAL | `docs/evidence/eks-upgrade-run2-2026-08-12.md` | Hourly and usage-type-level cost analysis |
 | Tag-aware CUR / Athena showback | MEASURED / IMPLEMENTED | `sql/cur-showback.sql`, `docs/evidence/tag-aware-showback-2026-08-10_to_2026-08-15.md` | Convert allocation metadata into reconciled business-facing cost ownership |
+| Evidence-based indirect allocation rule | MEASURED / IMPLEMENTED | `sql/cur-showback.sql`, tag-aware showback evidence | Attribute NAT-associated public IPv4 cost without disguising it as direct tag coverage |
 | Project AWS Budget | IMPLEMENTED - TERRAFORM MANAGED | `terraform/envs/finops/` | Alert on project cost thresholds |
 | Cost Anomaly Detection monitor | IMPLEMENTED - TERRAFORM MANAGED | `terraform/envs/finops/` | Detect unexpected project spend |
 | Daily anomaly subscription | IMPLEMENTED - TERRAFORM MANAGED | `terraform/envs/finops/` | Deliver anomaly notifications |
@@ -46,7 +47,7 @@ Measured EKS control-plane cost reduction:
 
 **83.33%**
 
-Normalised gross core infrastructure cost fell from approximately **$0.7666 to $0.2714 per environment-hour**, an observed reduction of approximately **64.6%**.
+Normalised gross core infrastructure cost fell from approximately **$0.7666 to $0.2714 per EKS-metered environment-hour**, an observed reduction of approximately **64.6%**.
 
 The EKS percentage is the primary causal result because the Kubernetes version was the isolated experiment variable.
 
@@ -75,7 +76,7 @@ Fixed networking rate reduction:
 
 Normalised gross core infrastructure cost changed from approximately:
 
-**$0.271381 to $0.209652 per environment-hour**
+**$0.271381 to $0.209652 per EKS-metered environment-hour**
 
 Observed whole-stack reduction:
 
@@ -91,11 +92,15 @@ For the low-traffic controlled Run #3, CUR recorded InterZone usage but $0.00 co
 
 For gross `Usage` cost from 10 to 15 August 2026, the tag-aware Athena showback measured:
 
-- **97.49% allocated gross cost** across all five required ownership dimensions;
-- **2.51% unallocated gross cost**, retained explicitly for remediation or shared-cost policy;
+- **97.49% directly allocated gross cost** across all five required ownership dimensions;
+- **2.11% rule-allocated gross cost** for the NAT-associated public IPv4 Usage after the untagged ENI timeline was reconciled to the controlled experiment topology;
+- **approximately 99.61% attributable cost coverage** using the underlying cost values;
+- **approximately 0.39% remaining unallocated/shared account tooling cost**;
 - raw CUR gross Usage cost of **$16.262665**;
-- showback gross Usage cost of **$16.262665**;
+- enhanced showback gross Usage cost of **$16.262665**;
 - reconciliation difference of **$0.0000000000**.
+
+The public IPv4 treatment is explicitly recorded as an evidence-based rule allocation rather than being presented as direct tag coverage or a generic AWS allocation rule.
 
 The allocation KPI is cost-weighted rather than row-weighted so low- and zero-cost CUR rows do not distort the ownership view.
 
@@ -104,7 +109,7 @@ The allocation KPI is cost-weighted rather than row-weighted so low- and zero-co
 | Priority | Opportunity | Status | Why it matters | Trade-off / limitation | Next evidence required |
 |---:|---|---|---|---|---|
 | 1 | CUR 2.0 / Athena pipeline as IaC | DESIGNED - NEXT | Makes the operational billing pipeline reproducible | Requires additional Terraform design | Terraform code and validation |
-| 2 | Unallocated-cost policy | DESIGNED | Turns the remaining 2.51% into an explicit tagging, shared-cost or account-level treatment | Must avoid arbitrary allocation | Usage-type drill-down and documented rule |
+| 2 | Shared FinOps tooling cost policy | DESIGNED | Defines treatment for the remaining ~0.39% account-level Cost Explorer, Athena and S3 overhead | Must avoid arbitrary workload allocation | Documented shared-cost policy |
 | 3 | 730-hour baseline model | MODELLED - NOT YET PUBLISHED | Supports monthly decision scenarios | Must not be confused with realised spend | Reconciled measured rates |
 | 4 | Spot worker nodes for non-prod | DESIGNED | May reduce worker compute cost | Interruptible capacity; compute is currently a smaller cost driver | Controlled pricing / workload test |
 | 5 | VPC endpoints for ECR/S3 | DESIGNED | May reduce NAT processing on sufficiently high private-service traffic | Interface endpoint hourly charges may exceed savings at low traffic | Break-even analysis |
@@ -128,4 +133,5 @@ The project first identified the largest cost drivers, then changed one architec
 | 2026-08-13 | Deploy EKS 1.34 dev environment with one NAT Gateway | IMPLEMENTED EXPERIMENT CONTROL | Isolate NAT Gateway count while retaining the Run #2 EKS and worker configuration |
 | 2026-08-14 | Complete and destroy single-NAT Run #3 | MEASURED | Preserve controlled runtime and verify clean teardown |
 | 2026-08-15 | Reconcile Run #3 using CUR 2.0 / Athena | MEASURED | Confirm 50% fixed networking rate reduction and document resilience trade-off |
-| 2026-08-16 | Build and reconcile tag-aware Athena showback | MEASURED / IMPLEMENTED | Convert five cost-allocation tags into an ownership view with 97.49% cost coverage and zero reconciliation difference |
+| 2026-08-16 | Build and reconcile tag-aware Athena showback | MEASURED / IMPLEMENTED | Convert five cost-allocation tags into an ownership view with 97.49% direct cost coverage and zero reconciliation difference |
+| 2026-08-16 | Add evidence-based public IPv4 allocation rule | MEASURED / IMPLEMENTED | Raise attributable coverage to approximately 99.61% while preserving a separate direct-versus-rule allocation distinction |
