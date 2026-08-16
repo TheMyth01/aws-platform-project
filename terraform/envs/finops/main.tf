@@ -47,11 +47,22 @@ resource "aws_budgets_budget" "project_monthly" {
 resource "aws_ce_anomaly_monitor" "project" {
   name         = "${var.project_name}-cost-monitor"
   monitor_type = "CUSTOM"
+  tags         = {}
 
+  # Preserve the live Cost Explorer expression exactly. The provider returns
+  # the full Expression shape, including null branches, and the activated
+  # cost-allocation tag is represented as user:Project in this monitor.
   monitor_specification = jsonencode({
+    And            = null
+    CostCategories = null
+    Dimensions     = null
+    Not            = null
+    Or             = null
+
     Tags = {
-      Key    = "Project"
-      Values = [var.project_name]
+      Key          = "user:Project"
+      MatchOptions = null
+      Values       = [var.project_name]
     }
   })
 }
