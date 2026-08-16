@@ -19,6 +19,7 @@ This register separates implemented controls, measured optimisation results and 
 | EKS worker instance, EBS and ENI tag propagation | IMPLEMENTED | `terraform/modules/eks/main.tf` | Reduce unallocated infrastructure spend |
 | AWS Cost Explorer analysis | MEASURED | `docs/cost-analysis.md`, `docs/evidence/` | Identify actual cost drivers |
 | CUR 2.0 / Athena billing analysis | MEASURED / OPERATIONAL | `docs/evidence/eks-upgrade-run2-2026-08-12.md` | Hourly and usage-type-level cost analysis |
+| CUR 2.0 / Athena billing pipeline IaC | IMPLEMENTED / VALIDATED | `terraform/envs/finops/billing-pipeline.tf`, `docs/evidence/cur2-iac-adoption-2026-08-16.md` | Make the live billing pipeline reproducible and drift-detectable without recreating historical resources |
 | Tag-aware CUR / Athena showback | MEASURED / IMPLEMENTED | `sql/cur-showback.sql`, `docs/evidence/tag-aware-showback-2026-08-10_to_2026-08-15.md` | Convert allocation metadata into reconciled business-facing cost ownership |
 | Evidence-based indirect allocation rule | MEASURED / IMPLEMENTED | `sql/cur-showback.sql`, tag-aware showback evidence | Attribute NAT-associated public IPv4 cost without disguising it as direct tag coverage |
 | Project AWS Budget | IMPLEMENTED - TERRAFORM MANAGED | `terraform/envs/finops/` | Alert on project cost thresholds |
@@ -104,16 +105,23 @@ The public IPv4 treatment is explicitly recorded as an evidence-based rule alloc
 
 The allocation KPI is cost-weighted rather than row-weighted so low- and zero-cost CUR rows do not distort the ownership view.
 
+## Billing pipeline IaC result
+
+The operational CUR 2.0 billing pipeline was adopted into Terraform as a brownfield IaC exercise rather than recreated.
+
+Terraform now represents the existing billing S3 bucket and its security controls, the delivery policy, the Glue catalog database and the BCM Data Export. The live Athena export required the official `hashicorp/awscc` provider because the native `hashicorp/aws` resource did not accept the existing `ATHENA` output type.
+
+After import and reconciliation of a pre-existing Cost Anomaly Detection tag-key drift, `terraform validate` succeeded and two consecutive `terraform plan` runs returned **no changes**. No apply was required.
+
 ## Optimisation backlog
 
 | Priority | Opportunity | Status | Why it matters | Trade-off / limitation | Next evidence required |
 |---:|---|---|---|---|---|
-| 1 | CUR 2.0 / Athena pipeline as IaC | DESIGNED - NEXT | Makes the operational billing pipeline reproducible | Requires additional Terraform design | Terraform code and validation |
-| 2 | Shared FinOps tooling cost policy | DESIGNED | Defines treatment for the remaining ~0.39% account-level Cost Explorer, Athena and S3 overhead | Must avoid arbitrary workload allocation | Documented shared-cost policy |
-| 3 | 730-hour baseline model | MODELLED - NOT YET PUBLISHED | Supports monthly decision scenarios | Must not be confused with realised spend | Reconciled measured rates |
-| 4 | Spot worker nodes for non-prod | DESIGNED | May reduce worker compute cost | Interruptible capacity; compute is currently a smaller cost driver | Controlled pricing / workload test |
-| 5 | VPC endpoints for ECR/S3 | DESIGNED | May reduce NAT processing on sufficiently high private-service traffic | Interface endpoint hourly charges may exceed savings at low traffic | Break-even analysis |
-| 6 | Worker rightsizing / autoscaling | DESIGNED | Useful if compute becomes material | Current measured platform fixed costs dominate | Utilisation evidence |
+| 1 | Shared FinOps tooling cost policy | DESIGNED | Defines treatment for the remaining ~0.39% account-level Cost Explorer, Athena and S3 overhead | Must avoid arbitrary workload allocation | Documented shared-cost policy |
+| 2 | 730-hour baseline model | MODELLED - NOT YET PUBLISHED | Supports monthly decision scenarios | Must not be confused with realised spend | Reconciled measured rates |
+| 3 | Spot worker nodes for non-prod | DESIGNED | May reduce worker compute cost | Interruptible capacity; compute is currently a smaller cost driver | Controlled pricing / workload test |
+| 4 | VPC endpoints for ECR/S3 | DESIGNED | May reduce NAT processing on sufficiently high private-service traffic | Interface endpoint hourly charges may exceed savings at low traffic | Break-even analysis |
+| 5 | Worker rightsizing / autoscaling | DESIGNED | Useful if compute becomes material | Current measured platform fixed costs dominate | Utilisation evidence |
 
 ## Prioritisation principle
 
@@ -135,3 +143,4 @@ The project first identified the largest cost drivers, then changed one architec
 | 2026-08-15 | Reconcile Run #3 using CUR 2.0 / Athena | MEASURED | Confirm 50% fixed networking rate reduction and document resilience trade-off |
 | 2026-08-16 | Build and reconcile tag-aware Athena showback | MEASURED / IMPLEMENTED | Convert five cost-allocation tags into an ownership view with 97.49% direct cost coverage and zero reconciliation difference |
 | 2026-08-16 | Add evidence-based public IPv4 allocation rule | MEASURED / IMPLEMENTED | Raise attributable coverage to approximately 99.61% while preserving a separate direct-versus-rule allocation distinction |
+| 2026-08-16 | Adopt live CUR 2.0 / Athena pipeline into Terraform | IMPLEMENTED / VALIDATED | Preserve working historical billing resources while bringing stable pipeline infrastructure under IaC with a zero-change plan |
