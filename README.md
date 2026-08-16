@@ -8,7 +8,7 @@ This project demonstrates practical cloud engineering and FinOps experience acro
 
 The platform was provisioned, a containerised application was deployed to EKS and exposed through an AWS Application Load Balancer, the live endpoint was validated, real deployment failures were debugged, and the environment was then safely torn down to stop unnecessary non-production spend.
 
-The FinOps work goes beyond generic recommendations: cost drivers were identified from measured AWS billing data, one infrastructure variable was changed at a time, the result was measured through CUR 2.0 / Athena, and engineering trade-offs were documented alongside the cost outcome.
+The FinOps work goes beyond generic recommendations: cost drivers were identified from measured AWS billing data, one infrastructure variable was changed at a time, the result was measured through CUR 2.0 / Athena, engineering trade-offs were documented alongside the cost outcome, and allocation outputs were reconciled back to raw CUR.
 
 ## Status Legend
 
@@ -20,16 +20,17 @@ The FinOps work goes beyond generic recommendations: cost drivers were identifie
 ## Current Status
 
 - **Phase 1 - Platform build: COMPLETE.**
-- **Phase 2 - FinOps implementation and controlled optimisation: IN PROGRESS, WITH TWO MEASURED OPTIMISATIONS.**
+- **Phase 2 - FinOps implementation and controlled optimisation: ADVANCED, WITH TWO MEASURED OPTIMISATIONS AND RECONCILED SHOWBACK.**
 
-The project now includes historical Cost Explorer analysis and three controlled CUR 2.0 / Athena runs.
+The project now includes historical Cost Explorer analysis, three controlled CUR 2.0 / Athena runs and a tag-aware ownership showback.
 
 ### Measured FinOps Results
 
-| Experiment | Controlled change | Measured result |
+| Area | Controlled change / control | Measured result |
 |---|---|---:|
-| Baseline #1 -> Run #2 | EKS 1.33 -> 1.34; workers, NAT count and VPC unchanged | **83.33% lower EKS control-plane cost** |
-| Run #2 -> Run #3 | 2 NAT Gateways -> 1; EKS 1.34, workers and VPC/subnets retained | **50% lower fixed NAT + associated IPv4 rate** |
+| EKS lifecycle | EKS 1.33 -> 1.34; workers, NAT count and VPC unchanged | **83.33% lower EKS control-plane cost** |
+| NAT architecture | 2 NAT Gateways -> 1; EKS 1.34, workers and VPC/subnets retained | **50% lower fixed NAT + associated IPv4 rate** |
+| Allocation / showback | Five ownership tags + evidence-based indirect allocation rule | **99.61% attributable gross Usage cost** |
 
 Baseline #1 measured an EKS control-plane rate of approximately **$0.60/hour**, including a **$0.50/hour extended-support surcharge**.
 
@@ -37,15 +38,18 @@ Run #2 changed only the EKS version to Kubernetes 1.34 while retaining two `t3.s
 
 Run #3 retained EKS 1.34 and the same worker/VPC configuration but reduced NAT Gateway count from two to one. Measured fixed networking rate changed from approximately **$0.11/hour to $0.055/hour**, a **50% reduction** in NAT Gateway plus associated public IPv4 fixed cost.
 
-Normalised gross core infrastructure cost changed from approximately **$0.271381 to $0.209652 per environment-hour** between Run #2 and Run #3, an observed reduction of approximately **22.75%**. This whole-stack percentage is presented as an observed normalised result rather than the isolated causal saving because the runs had different durations and hourly billing boundaries.
+Normalised gross core infrastructure cost changed from approximately **$0.271381 to $0.209652 per EKS-metered environment-hour** between Run #2 and Run #3, an observed reduction of approximately **22.75%**. This whole-stack percentage is presented as an observed normalised result rather than the isolated causal saving because the runs had different durations and hourly billing boundaries.
 
 Run #3 also records the engineering trade-off: a shared NAT removes independent AZ-local egress and can introduce cross-AZ traffic. That makes the decision appropriate for this dev cost target, but not a blanket recommendation for production.
+
+The tag-aware Athena showback measured **97.49% directly allocated gross Usage cost** across Project, Environment, CostCenter, Owner and ManagedBy. Investigation of the remaining cost identified NAT-associated public IPv4 Usage recorded against untagged network interfaces; a separately labelled, evidence-based allocation rule increased attributable cost coverage to approximately **99.61%**, while approximately **0.39%** remained explicitly unallocated/shared. The enhanced showback reconciled exactly to raw CUR with a **$0.0000000000 difference**.
 
 Additional implemented FinOps controls include:
 
 - activated project cost-allocation tags with historical backfill;
 - launch-template tag propagation to EKS worker instances, volumes and network interfaces;
 - CUR 2.0 billing analysis through Amazon Athena;
+- tag-aware Athena showback with direct, rule-based and unallocated cost treatment;
 - a project-scoped AWS Budget managed through Terraform;
 - a project-scoped Cost Anomaly Detection monitor and daily subscription managed through Terraform;
 - verified teardown discipline and orphan-resource checks for non-production infrastructure.
@@ -56,7 +60,8 @@ See:
 - `docs/optimisation-register.md`
 - `docs/finops-operating-model.md`
 - `docs/tagging-strategy.md`
-- `docs/evidence/`
+- `docs/evidence/tag-aware-showback-2026-08-10_to_2026-08-15.md`
+- `sql/cur-showback.sql`
 
 ## Architecture Overview
 
@@ -100,6 +105,9 @@ The dev environment now defaults to a measured single-NAT cost target. The VPC m
 - EKS worker instance, EBS and ENI tag propagation
 - AWS Cost Explorer analysis by service and usage type
 - CUR 2.0 / Athena analysis at usage-type level
+- Cost-weighted showback by Project, Environment, CostCenter, Owner and ManagedBy
+- Explicit direct-versus-rule allocation treatment for indirectly attributable spend
+- Financial reconciliation of showback back to raw CUR Usage cost
 - AWS Budget and Cost Anomaly Detection controls managed through Terraform
 - Controlled cost optimisation with measured before/after evidence
 - Explicit separation of measured, implemented, designed and modelled claims
@@ -123,6 +131,7 @@ The dev environment now defaults to a measured single-NAT cost target. The VPC m
 - AWS Cost Explorer
 - AWS CUR 2.0
 - Amazon Athena
+- SQL
 - AWS Budgets
 - AWS Cost Anomaly Detection
 
@@ -132,6 +141,7 @@ The dev environment now defaults to a measured single-NAT cost target. The VPC m
 app/                  Sample containerised application
 docs/                 Project evidence, analysis and operating-model documentation
 k8s/                  Kubernetes namespace, deployment, service and ingress manifests
+sql/                  CUR diagnostics, allocation and showback SQL
 terraform/bootstrap/  Terraform backend foundation
 terraform/modules/    Reusable Terraform modules
 terraform/envs/dev/   Development environment configuration
@@ -207,11 +217,9 @@ Evidence includes `docs/week-5-cost-control-teardown.md` and `docs/evidence/run3
 
 ## FinOps Cost Analysis - MEASURED
 
-The project contains two layers of measured billing evidence.
+The project contains historical Cost Explorer evidence plus a controlled August 2026 experiment series using CUR 2.0 and Athena.
 
-The first is historical AWS Cost Explorer analysis for 20-30 April 2026, where total unblended Usage cost was **$1.9304346123**.
-
-The second is a controlled August 2026 experiment series using CUR 2.0 and Athena.
+The historical Cost Explorer analysis for 20-30 April 2026 measured total unblended Usage cost of **$1.9304346123**.
 
 ### Baseline #1 - EKS 1.33, two NAT Gateways
 
@@ -247,9 +255,9 @@ Measured:
 - EBS gp3: $0.134710 gross
 - public IPv4 in-use: $0.135183 gross
 - core infrastructure: **$5.676672 gross**
-- normalised core cost: **$0.209652 per environment-hour**
+- normalised core cost: **$0.209652 per EKS-metered environment-hour**
 
-Compared with Run #2's **$0.271381 per environment-hour**, Run #3 produced an observed normalised whole-stack reduction of approximately **22.75%**.
+Compared with Run #2's **$0.271381 per EKS-metered environment-hour**, Run #3 produced an observed normalised whole-stack reduction of approximately **22.75%**.
 
 The cleaner isolated networking result is the fixed-rate change:
 
@@ -261,6 +269,21 @@ At 730 operating hours, the measured unit-rate difference implies a **MODELLED**
 
 AWS credits are reported separately from gross economic cost so promotional credits do not obscure the underlying architecture cost.
 
+### Tag-aware showback - 10 to 15 August 2026
+
+The five activated cost-allocation tags appear in CUR as `user_project`, `user_environment`, `user_owner`, `user_cost_center` and `user_managed_by`.
+
+Measured gross `Usage` cost for the showback window was **$16.262665**.
+
+- Directly allocated: **$15.854914 / 97.49%**
+- Evidence-based rule allocated: **$0.343704 / 2.11%**
+- Remaining unallocated/shared: **$0.064047 / approximately 0.39%**
+- Effective attributable coverage using underlying cost values: **approximately 99.61%**
+- Enhanced showback total: **$16.262665**
+- Reconciliation difference versus raw CUR: **$0.0000000000**
+
+The rule-allocated amount is the NAT-associated public IPv4 Usage identified from untagged network-interface rows whose timing matched the known two-NAT, two-NAT, one-NAT experiment sequence. It is explicitly kept separate from direct tag coverage and is not treated as a general AWS allocation rule.
+
 Evidence:
 
 - `docs/evidence/baseline-run-2026-08-10_to_2026-08-11.txt`
@@ -268,14 +291,16 @@ Evidence:
 - `docs/evidence/run2-timestamps-2026-08-12.txt`
 - `docs/evidence/run3-timestamps-2026-08-13_to_2026-08-14.txt`
 - `docs/evidence/single-nat-run3-2026-08-13_to_2026-08-14.md`
+- `docs/evidence/tag-aware-showback-2026-08-10_to_2026-08-15.md`
+- `sql/cur-showback.sql`
 - `docs/cost-analysis.md`
 
 ## FinOps Implementation Roadmap
 
 The next FinOps stages are deliberately selected from measured evidence rather than generic cloud-cost advice:
 
-1. produce a tag-aware Athena showback view using the activated project cost-allocation tags;
-2. codify the operational CUR 2.0 / Athena billing pipeline in infrastructure as code;
+1. codify the operational CUR 2.0 / Athena billing pipeline in infrastructure as code;
+2. document a shared FinOps tooling-cost policy for the remaining approximately 0.39% account-level overhead;
 3. extend the explicitly labelled 730-hour model using reconciled measured EKS and networking rates;
 4. evaluate later compute opportunities such as Spot workers or rightsizing only if worker compute becomes materially significant.
 
@@ -283,12 +308,12 @@ The next FinOps stages are deliberately selected from measured evidence rather t
 
 The project follows a repeatable FinOps decision loop:
 
-**Build -> Measure -> Find -> Decide -> Change -> Validate -> Govern**
+**Build -> Measure -> Find -> Decide -> Change -> Validate -> Allocate -> Govern**
 
 A concise interview example is:
 
-> I built a production-style EKS platform in Terraform and instrumented the cost side with allocation tags, Cost Explorer, CUR 2.0 / Athena, Budgets and anomaly controls. CUR identified an EKS extended-support surcharge, so I ran a controlled 1.33-to-1.34 experiment that reduced the measured EKS control-plane rate from about $0.60/hour to $0.10/hour, an 83.33% reduction. I then isolated NAT architecture in a second controlled experiment: moving the dev environment from two NAT Gateways to one cut the fixed NAT plus associated IPv4 rate by 50%, while I explicitly documented the resilience and cross-AZ trade-off rather than treating cheaper as automatically better.
+> I built a production-style EKS platform in Terraform and instrumented the cost side with allocation tags, Cost Explorer, CUR 2.0 / Athena, Budgets and anomaly controls. CUR identified an EKS extended-support surcharge, so I ran a controlled 1.33-to-1.34 experiment that reduced the measured EKS control-plane rate from about $0.60/hour to $0.10/hour, an 83.33% reduction. I then isolated NAT architecture in a second controlled experiment: moving the dev environment from two NAT Gateways to one cut the fixed NAT plus associated IPv4 rate by 50%, while I explicitly documented the resilience and cross-AZ trade-off rather than treating cheaper as automatically better. Finally, I built a tag-aware Athena showback: 97.49% of gross Usage cost was directly allocated, and an evidence-based rule for NAT-associated public IPv4 raised attributable coverage to about 99.61%. The enhanced showback reconciled exactly to raw CUR.
 
 ## CV-Ready Summary
 
-Built and operated a production-style AWS platform using Terraform, EKS, ECR, Kubernetes, Helm, ALB and IRSA; implemented cost-allocation tagging, AWS Budgets and Cost Anomaly Detection; analysed CUR 2.0 billing data with Athena; identified and removed an EKS extended-support cost exposure through a controlled experiment that reduced measured EKS control-plane cost by **83.33%**; then ran a second controlled architecture experiment that reduced the fixed NAT Gateway plus associated public IPv4 rate by **50%**, with the resilience trade-off documented and supported by measured AWS billing evidence.
+Built and operated a production-style AWS platform using Terraform, EKS, ECR, Kubernetes, Helm, ALB and IRSA; implemented cost-allocation tagging, AWS Budgets and Cost Anomaly Detection; analysed CUR 2.0 billing data with Athena; identified and removed an EKS extended-support cost exposure through a controlled experiment that reduced measured EKS control-plane cost by **83.33%**; ran a second controlled architecture experiment that reduced the fixed NAT Gateway plus associated public IPv4 rate by **50%**; and built a reconciled tag-aware showback with approximately **99.61% attributable gross Usage cost coverage**, while retaining direct, rule-based and genuinely unallocated cost as separate categories.
